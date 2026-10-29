@@ -1,10 +1,11 @@
-import { createDemoManifestations, createDemoSurveys, departments as demoDepartments } from '../data/demo'
-import type { AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyRecord } from '../types'
+import { createDemoManifestations, createDemoSurveys, departments as demoDepartments, demoQuestions, getShift } from '../data/demo'
+import type { AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
 const DEMO_SURVEYS_KEY = 'sgep:surveys'
 const DEMO_MANIFESTATIONS_KEY = 'sgep:manifestations'
 const DEMO_DEPARTMENTS_KEY = 'sgep:departments'
+const DEMO_QUESTIONS_KEY = 'sgep:questions'
 const DEMO_TOKEN_KEY = 'sgep:token'
 
 export const isDemoMode = !API_BASE_URL
@@ -46,6 +47,76 @@ export async function getDepartments(): Promise<Department[]> {
   return readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
 }
 
+export async function getQuestions(sectorSlug: string): Promise<SurveyQuestion[]> {
+  if (API_BASE_URL) {
+    return request<SurveyQuestion[]>(`/api/v1/perguntas?setor=${encodeURIComponent(sectorSlug)}`)
+  }
+  return readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
+    .filter((question) => question.active && (question.sectorSlug === null || question.sectorSlug === sectorSlug))
+    .sort((a, b) => Number(b.required) - Number(a.required) || a.order - b.order)
+}
+
+export async function getManagedQuestions(sectorSlug: string | null): Promise<SurveyQuestion[]> {
+  if (API_BASE_URL) {
+    const query = sectorSlug === null ? 'escopo=geral' : `setor=${encodeURIComponent(sectorSlug)}`
+    return request<SurveyQuestion[]>(`/api/v1/perguntas?${query}&inativas=true`)
+  }
+  return readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
+    .filter((question) => question.sectorSlug === sectorSlug)
+    .sort((a, b) => a.order - b.order)
+}
+
+export async function createQuestion(input: {
+  text: string
+  type: SurveyQuestionType
+  required: boolean
+  sectorSlug: string | null
+}): Promise<SurveyQuestion> {
+  if (API_BASE_URL) {
+    return request<SurveyQuestion>('/api/v1/perguntas', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  }
+  const questions = readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
+  if (input.required && questions.some((question) => question.required && question.active)) {
+    throw new Error('Já existe uma pergunta obrigatória. Desative a obrigatoriedade da pergunta atual antes de criar outra.')
+  }
+  const question: SurveyQuestion = {
+    ...input,
+    id: `pergunta-${crypto.randomUUID()}`,
+    active: true,
+    order: Math.max(0, ...questions.filter((item) => item.sectorSlug === input.sectorSlug).map((item) => item.order)) + 1,
+    answerKey: `custom_${crypto.randomUUID().replaceAll('-', '')}`,
+  }
+  saveDemo(DEMO_QUESTIONS_KEY, [...questions, question])
+  return question
+}
+
+export async function updateQuestion(id: string, input: Partial<Pick<SurveyQuestion, 'text' | 'active' | 'required'>>): Promise<SurveyQuestion> {
+  if (API_BASE_URL) {
+    return request<SurveyQuestion>(`/api/v1/perguntas/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    })
+  }
+  const questions = readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
+  const index = questions.findIndex((question) => question.id === id)
+  if (index < 0) throw new Error('Pergunta não encontrada.')
+  if (input.active === false && questions[index].required) {
+    throw new Error('A pergunta geral obrigatória não pode ser desativada.')
+  }
+  if (input.required && (questions[index].type !== 'rostinho' || questions[index].sectorSlug !== null)) {
+    throw new Error('Somente uma pergunta geral com rostinhos pode ser obrigatória.')
+  }
+  if (input.required && questions.some((question) => question.id !== id && question.required && question.active)) {
+    throw new Error('A pesquisa pode ter apenas uma pergunta obrigatória.')
+  }
+  questions[index] = { ...questions[index], ...input }
+  saveDemo(DEMO_QUESTIONS_KEY, questions)
+  return questions[index]
+}
+
 export async function createSurvey(sectorSlug: string): Promise<SurveyRecord> {
   if (API_BASE_URL) {
     return request<SurveyRecord>('/api/v1/pesquisas', {
@@ -58,7 +129,7 @@ export async function createSurvey(sectorSlug: string): Promise<SurveyRecord> {
     id: `pesquisa-${crypto.randomUUID()}`,
     sectorSlug,
     createdAt: new Date().toISOString(),
-    shift: (await import('../data/demo')).getShift(),
+    shift: getShift(),
     answers: {},
     mean: null,
     complete: false,
@@ -67,18 +138,18 @@ export async function createSurvey(sectorSlug: string): Promise<SurveyRecord> {
   return survey
 }
 
-export async function saveSurveyAnswer(id: string, field: keyof SurveyAnswers, value: number | string): Promise<SurveyRecord> {
+export async function saveSurveyAnswer(id: string, question: SurveyQuestion, value: number | string): Promise<SurveyRecord> {
   if (API_BASE_URL) {
     return request<SurveyRecord>(`/api/v1/pesquisas/${encodeURIComponent(id)}/respostas`, {
       method: 'POST',
-      body: JSON.stringify({ campo: field, valor: value }),
+      body: JSON.stringify({ perguntaId: question.id, valor: value }),
     })
   }
   const surveys = readDemo(DEMO_SURVEYS_KEY, createDemoSurveys)
   const index = surveys.findIndex((survey) => survey.id === id)
   if (index < 0) throw new Error('Esta pesquisa não foi encontrada. Volte ao início e tente novamente.')
-  const answers = { ...surveys[index].answers, [field]: value }
-  const ratings = [answers.overallRating, answers.departmentRating].filter((rating): rating is number => typeof rating === 'number')
+  const answers = { ...surveys[index].answers, [question.answerKey]: value }
+  const ratings = questionsForSurvey(surveys[index].sectorSlug, answers)
   const updated: SurveyRecord = {
     ...surveys[index],
     answers,
@@ -87,6 +158,15 @@ export async function saveSurveyAnswer(id: string, field: keyof SurveyAnswers, v
   surveys[index] = updated
   saveDemo(DEMO_SURVEYS_KEY, surveys)
   return updated
+}
+
+function questionsForSurvey(sectorSlug: string, answers: SurveyAnswers): number[] {
+  const allQuestions = readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
+  const questions = allQuestions
+    .filter((item) => item.active && item.type === 'rostinho' && (item.sectorSlug === null || item.sectorSlug === sectorSlug))
+    .map((item) => answers[item.answerKey])
+    .filter((value): value is number => typeof value === 'number')
+  return questions
 }
 
 export async function completeSurvey(id: string): Promise<SurveyRecord> {
@@ -128,9 +208,54 @@ export async function createManifestation(input: {
 
 export async function getDashboardData(): Promise<DashboardPayload> {
   if (API_BASE_URL) return request<DashboardPayload>('/api/v1/dashboard/resumo')
+  const user = getCurrentUser()
+  const surveys = readDemo(DEMO_SURVEYS_KEY, createDemoSurveys)
+  const manifestations = readDemo(DEMO_MANIFESTATIONS_KEY, createDemoManifestations)
+  if (user?.role === 'Gestão') {
+    const sectorSurveys = surveys.filter((survey) => survey.sectorSlug === user.sectorSlug)
+    return {
+      surveys: sectorSurveys,
+      manifestations: [],
+      manifestationOpenCount: manifestations.filter((item) => item.status !== 'Concluída').length,
+    }
+  }
+  if (user?.role === 'Ouvidoria') {
+    return {
+      surveys: [],
+      manifestations,
+    }
+  }
   return {
-    surveys: readDemo(DEMO_SURVEYS_KEY, createDemoSurveys),
-    manifestations: readDemo(DEMO_MANIFESTATIONS_KEY, createDemoManifestations),
+    surveys,
+    manifestations,
+    manifestationOpenCount: manifestations.filter((item) => item.status !== 'Concluída').length,
+  }
+}
+
+export async function getTVWallData(): Promise<TVWallPayload> {
+  if (API_BASE_URL) return request<TVWallPayload>('/api/v1/tv-wall/resumo')
+  const surveys = readDemo(DEMO_SURVEYS_KEY, createDemoSurveys)
+  const manifestations = readDemo(DEMO_MANIFESTATIONS_KEY, createDemoManifestations)
+  const scored = surveys.filter((survey) => survey.mean !== null)
+  const npsRatings = surveys.map((survey) => survey.answers.nps).filter((value): value is number => typeof value === 'number')
+  const nps = npsRatings.length
+    ? Math.round(((npsRatings.filter((value) => value >= 9).length - npsRatings.filter((value) => value <= 6).length) / npsRatings.length) * 100)
+    : null
+  const departments = readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
+  const sectors = departments.map((department) => {
+    const matching = scored.filter((survey) => survey.sectorSlug === department.slug)
+    return {
+      sectorSlug: department.slug,
+      responseCount: matching.length,
+      satisfactionAverage: matching.length ? Number((matching.reduce((sum, survey) => sum + (survey.mean ?? 0), 0) / matching.length).toFixed(1)) : 0,
+    }
+  }).filter((sector) => sector.responseCount >= 5)
+  return {
+    responseCount: surveys.length,
+    satisfactionAverage: scored.length ? Number((scored.reduce((sum, survey) => sum + (survey.mean ?? 0), 0) / scored.length).toFixed(1)) : null,
+    nps,
+    complimentCount: manifestations.filter((item) => item.type === 'Elogio').length,
+    sectors,
   }
 }
 
@@ -167,7 +292,7 @@ export async function createDepartment(input: Pick<Department, 'name' | 'slug' |
   return department
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
+export async function login(email: string, password: string, role: AuthUser['role'] = 'Gestão', sectorSlug?: string): Promise<AuthUser> {
   if (API_BASE_URL) {
     const result = await request<{ token: string; user: AuthUser }>('/api/v1/auth/login', {
       method: 'POST',
@@ -178,7 +303,9 @@ export async function login(email: string, password: string): Promise<AuthUser> 
     return result.user
   }
   if (!email.trim() || !password.trim()) throw new Error('Informe seu e-mail e sua senha.')
-  const user: AuthUser = { name: 'Equipe de Gestão', email, role: 'Gestão' }
+  if (role === 'Gestão' && !sectorSlug) throw new Error('Selecione o setor associado à conta de Gestão.')
+  const defaultName = role === 'Administrador' ? 'Administrador' : role === 'Ouvidoria' ? 'Equipe de Ouvidoria' : 'Responsável pelo setor'
+  const user: AuthUser = { name: defaultName, email, role, ...(role === 'Gestão' ? { sectorSlug } : {}) }
   sessionStorage.setItem(DEMO_TOKEN_KEY, 'demo-token')
   sessionStorage.setItem('sgep:user', JSON.stringify(user))
   return user

@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Heart, ShieldCheck } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, Check, Heart, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Brand } from '../components/Brand'
-import { DepartmentIcon } from '../components/DepartmentIcon'
-import { completeSurvey, createManifestation, getDepartments, saveSurveyAnswer } from '../services/api'
+import { completeSurvey, createManifestation, getDepartments, getQuestions, saveSurveyAnswer } from '../services/api'
 import { departments as fallbackDepartments } from '../data/demo'
-import type { Department, ManifestationType, SurveyRecord } from '../types'
+import type { Department, ManifestationType, SurveyQuestion } from '../types'
 
 const faces = [
   { value: 1, emoji: '😞', label: 'Muito ruim', color: 'face-one' },
@@ -23,6 +22,7 @@ export function SurveyFlow() {
   const { slug = '', step = '1' } = useParams()
   const [searchParams] = useSearchParams()
   const [department, setDepartment] = useState<Department | null>(null)
+  const [questions, setQuestions] = useState<SurveyQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -31,12 +31,15 @@ export function SurveyFlow() {
   const navigate = useNavigate()
   const surveyId = searchParams.get('pesquisa') ?? ''
   const currentStep = Number(step)
-  const currentDepartment = useMemo(() => department ?? fallbackDepartments.find((item) => item.slug === slug) ?? null, [department, slug])
+  const currentDepartment = department ?? fallbackDepartments.find((item) => item.slug === slug) ?? null
 
   useEffect(() => {
     let active = true
-    getDepartments().then((items) => {
-      if (active) setDepartment(items.find((item) => item.slug === slug) ?? null)
+    Promise.all([getDepartments(), getQuestions(slug)]).then(([items, surveyQuestions]) => {
+      if (active) {
+        setDepartment(items.find((item) => item.slug === slug) ?? null)
+        setQuestions(surveyQuestions)
+      }
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar esta pesquisa.')
     }).finally(() => {
@@ -50,15 +53,34 @@ export function SurveyFlow() {
   if (!surveyId) return <SurveyMessage title="Pesquisa não iniciada" text="Volte ao início e escolha o setor onde você foi atendido." />
 
   const query = `?pesquisa=${encodeURIComponent(surveyId)}`
-  const progress = Math.min(100, Math.round((currentStep / 4) * 100))
+  const currentQuestion = questions[currentStep - 1]
+  const lastQuestion = currentStep === questions.length
+  const progress = questions.length ? Math.min(100, Math.round((currentStep / questions.length) * 100)) : 0
 
-  async function saveAndContinue(field: 'overallRating' | 'departmentRating' | 'nps', value: number) {
+  async function finishSurvey() {
+    const survey = await completeSurvey(surveyId)
+    if (survey.mean !== null && survey.mean <= 2) {
+      navigate(`/ouvidoria${query}&setor=${encodeURIComponent(slug)}`)
+    } else {
+      navigate(`/pesquisa/agradecimento${query}&setor=${encodeURIComponent(slug)}`)
+    }
+  }
+
+  async function saveAndContinue(value: number | string) {
+    if (!currentQuestion) return
     setSaving(true)
     setError('')
     try {
-      await saveSurveyAnswer(surveyId, field, value)
-      navigate(`/pesquisa/${slug}/pergunta/${currentStep + 1}${query}`)
+      if (typeof value !== 'string' || value.trim()) {
+        await saveSurveyAnswer(surveyId, currentQuestion, typeof value === 'string' ? value.trim() : value)
+      }
       setSelected(null)
+      setComment('')
+      if (lastQuestion) {
+        await finishSurvey()
+      } else {
+        navigate(`/pesquisa/${slug}/pergunta/${currentStep + 1}${query}`)
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível salvar sua resposta.')
     } finally {
@@ -66,63 +88,20 @@ export function SurveyFlow() {
     }
   }
 
-  async function finish(commentValue = '') {
-    setSaving(true)
-    setError('')
-    try {
-      if (commentValue.trim()) await saveSurveyAnswer(surveyId, 'comment', commentValue.trim())
-      const survey = await completeSurvey(surveyId)
-      if (survey.mean !== null && survey.mean <= 2) {
-        navigate(`/ouvidoria${query}`)
-      } else {
-        navigate(`/pesquisa/agradecimento${query}`)
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível finalizar a pesquisa.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const questionContent = currentStep === 1 ? (
+  const questionContent = currentQuestion ? (
     <>
-      <span className="survey-kicker">PERGUNTA 1 · OBRIGATÓRIA</span>
-      <h1>De modo geral,<br />como foi sua experiência?</h1>
-      <p className="survey-subtitle">Sua resposta ajuda a gente a cuidar melhor.</p>
-      <div className="face-options" role="radiogroup" aria-label="Avaliação geral">
+      <span className="survey-kicker">PERGUNTA {currentStep} · {currentQuestion.required ? 'OBRIGATÓRIA' : 'OPCIONAL'}</span>
+      <h1>{currentQuestion.text}</h1>
+      <p className="survey-subtitle">{currentQuestion.type === 'rostinho' ? 'Escolha o rostinho que melhor representa sua experiência.' : currentQuestion.type === 'nps' ? 'Escolha uma nota de 0 a 10.' : 'Responda com suas palavras. Esta pergunta é opcional.'}</p>
+      {currentQuestion.type === 'rostinho' && <div className="face-options" role="radiogroup" aria-label={currentQuestion.text}>
         {faces.map((face) => <button key={face.value} type="button" className={`face-option ${face.color}${selected === face.value ? ' selected' : ''}`} role="radio" aria-checked={selected === face.value} onClick={() => setSelected(face.value)}><span>{face.emoji}</span><small>{face.label}</small></button>)}
+      </div>}
+      {currentQuestion.type === 'nps' && <><div className="nps-scale" role="radiogroup" aria-label={currentQuestion.text}>{Array.from({ length: 11 }, (_, value) => <button key={value} type="button" role="radio" aria-checked={selected === value} className={selected === value ? 'nps-selected' : ''} onClick={() => setSelected(value)}>{value}</button>)}</div><div className="nps-labels"><span>Não recomendaria</span><span>Com certeza recomendaria</span></div></>}
+      {currentQuestion.type === 'texto' && <label className="comment-field"><span>Sua resposta</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={700} placeholder="Escreva aqui, se quiser…" rows={5} /><small>{comment.length}/700 caracteres</small></label>}
+      <div className={`survey-actions${currentQuestion.required ? '' : ' survey-actions-split'}`}>
+        {!currentQuestion.required && <button className="text-button" disabled={saving} onClick={() => void saveAndContinue('')}>Pular pergunta</button>}
+        <button className={`button button-primary${currentQuestion.required ? ' button-wide' : ''}`} disabled={saving || (currentQuestion.required && selected === null) || (currentQuestion.type !== 'texto' && selected === null)} onClick={() => void saveAndContinue(currentQuestion.type === 'texto' ? comment : selected ?? '')}>{saving ? 'Salvando…' : lastQuestion ? 'Finalizar pesquisa' : 'Continuar'} {lastQuestion ? <Check size={17} /> : <ArrowRight size={17} />}</button>
       </div>
-      <div className="survey-actions"><button className="button button-primary button-wide" disabled={selected === null || saving} onClick={() => selected !== null && saveAndContinue('overallRating', selected)}>{saving ? 'Salvando…' : 'Continuar'} <ArrowRight size={17} /></button></div>
-    </>
-  ) : currentStep === 2 ? (
-    <>
-      <span className="survey-kicker">PERGUNTA 2 · OPCIONAL</span>
-      <div className="current-sector-label"><DepartmentIcon name={currentDepartment.icon} size={17} /> {currentDepartment.name}</div>
-      <h1>Como foi o atendimento<br />nesta etapa?</h1>
-      <p className="survey-subtitle">Escolha um rostinho. Você também pode pular.</p>
-      <div className="face-options" role="radiogroup" aria-label={`Avaliação de ${currentDepartment.name}`}>
-        {faces.map((face) => <button key={face.value} type="button" className={`face-option ${face.color}${selected === face.value ? ' selected' : ''}`} role="radio" aria-checked={selected === face.value} onClick={() => setSelected(face.value)}><span>{face.emoji}</span><small>{face.label}</small></button>)}
-      </div>
-      <div className="survey-actions survey-actions-split"><button className="text-button" onClick={() => navigate(`/pesquisa/${slug}/pergunta/3${query}`)}>Pular pergunta</button><button className="button button-primary" disabled={selected === null || saving} onClick={() => selected !== null && saveAndContinue('departmentRating', selected)}>{saving ? 'Salvando…' : 'Continuar'} <ArrowRight size={17} /></button></div>
-    </>
-  ) : currentStep === 3 ? (
-    <>
-      <span className="survey-kicker">PERGUNTA 3 · OPCIONAL</span>
-      <h1>Você recomendaria<br />nosso hospital?</h1>
-      <p className="survey-subtitle">De 0 a 10, o quanto você recomendaria para alguém?</p>
-      <div className="nps-scale" role="radiogroup" aria-label="Nota de recomendação de 0 a 10">
-        {Array.from({ length: 11 }, (_, value) => <button key={value} type="button" role="radio" aria-checked={selected === value} className={selected === value ? 'nps-selected' : ''} onClick={() => setSelected(value)}>{value}</button>)}
-      </div>
-      <div className="nps-labels"><span>Não recomendaria</span><span>Com certeza recomendaria</span></div>
-      <div className="survey-actions survey-actions-split"><button className="text-button" onClick={() => navigate(`/pesquisa/${slug}/pergunta/4${query}`)}>Pular pergunta</button><button className="button button-primary" disabled={selected === null || saving} onClick={() => selected !== null && saveAndContinue('nps', selected)}>{saving ? 'Salvando…' : 'Continuar'} <ArrowRight size={17} /></button></div>
-    </>
-  ) : currentStep === 4 ? (
-    <>
-      <span className="survey-kicker">ÚLTIMA ETAPA · OPCIONAL</span>
-      <h1>Quer contar mais<br />alguma coisa?</h1>
-      <p className="survey-subtitle">Elogios e sugestões também ajudam a melhorar.</p>
-      <label className="comment-field"><span>Sua mensagem</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={700} placeholder="Escreva aqui, se quiser…" rows={5} /><small>{comment.length}/700 caracteres</small></label>
-      <div className="survey-actions survey-actions-split"><button className="text-button" onClick={() => finish()}>Pular e finalizar</button><button className="button button-primary" disabled={saving} onClick={() => finish(comment)}>{saving ? 'Salvando…' : 'Finalizar pesquisa'} <Check size={17} /></button></div>
     </>
   ) : null
 
@@ -130,10 +109,10 @@ export function SurveyFlow() {
     <main className="survey-page">
       <header className="survey-header"><Brand /><Link className="survey-exit" to="/">Sair da pesquisa</Link></header>
       <div className="survey-shell">
-        <div className="survey-progress"><div className="progress-caption"><span>{currentDepartment.name}</span><span>{Math.min(currentStep, 4)} de 4</span></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
+        <div className="survey-progress"><div className="progress-caption"><span>{currentDepartment.name}</span><span>{currentStep} de {questions.length || '—'}</span></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
         <section className="survey-card">
           {error && <div className="alert alert-error" role="alert">{error}</div>}
-          {questionContent ?? <SurveyMessage title="Pesquisa concluída" text="Obrigado por compartilhar sua experiência." />}
+          {questionContent ?? (questions.length === 0 ? <SurveyMessage title="Ainda não há perguntas para este setor" text="A equipe responsável precisa cadastrar perguntas antes de iniciar esta pesquisa." /> : <SurveyMessage title="Esta etapa não está disponível" text="Volte ao início e tente iniciar a pesquisa novamente." />)}
         </section>
         <FeedbackFooter />
       </div>
@@ -144,10 +123,11 @@ export function SurveyFlow() {
 export function SurveyThanks() {
   const [searchParams] = useSearchParams()
   const surveyId = searchParams.get('pesquisa')
-  return <SurveyMessage title="Obrigado por nos contar!" text="Sua resposta foi registrada. Ela ajuda a equipe a tornar o cuidado cada vez melhor." icon="heart" surveyId={surveyId ?? undefined} />
+  const sectorSlug = searchParams.get('setor') ?? undefined
+  return <SurveyMessage title="Obrigado por nos contar!" text="Sua resposta foi registrada. Ela ajuda a equipe a tornar o cuidado cada vez melhor." icon="heart" surveyId={surveyId ?? undefined} sectorSlug={sectorSlug} />
 }
 
-function SurveyMessage({ title, text, icon = 'check', surveyId }: { title: string; text: string; icon?: 'heart' | 'check'; surveyId?: string }) {
+function SurveyMessage({ title, text, icon = 'check', surveyId, sectorSlug }: { title: string; text: string; icon?: 'heart' | 'check'; surveyId?: string; sectorSlug?: string }) {
   return (
     <main className="survey-page">
       <header className="survey-header"><Brand /><Link className="survey-exit" to="/">Início</Link></header>
@@ -155,7 +135,7 @@ function SurveyMessage({ title, text, icon = 'check', surveyId }: { title: strin
         <div className="result-icon">{icon === 'heart' ? <Heart size={30} fill="currentColor" /> : <Check size={31} />}</div>
         <span className="survey-kicker">CUIDADO QUE MELHORA</span>
         <h1>{title}</h1><p>{text}</p>
-        {surveyId && <p className="result-note">Se preferir, você ainda pode <Link to={`/ouvidoria?pesquisa=${encodeURIComponent(surveyId)}`}>falar com a Ouvidoria</Link>.</p>}
+        {surveyId && <p className="result-note">Se preferir, você ainda pode <Link to={`/ouvidoria?pesquisa=${encodeURIComponent(surveyId)}${sectorSlug ? `&setor=${encodeURIComponent(sectorSlug)}` : ''}`}>falar com a Ouvidoria</Link>.</p>}
         <Link to="/" className="button button-primary">Voltar ao início <ArrowRight size={16} /></Link>
       </section>
       <FeedbackFooter />
@@ -166,7 +146,8 @@ function SurveyMessage({ title, text, icon = 'check', surveyId }: { title: strin
 export function OmbudsmanForm() {
   const [searchParams] = useSearchParams()
   const surveyId = searchParams.get('pesquisa') ?? ''
-  const [sectorSlug, setSectorSlug] = useState('')
+  const requestedSector = searchParams.get('setor') ?? ''
+  const [sectorSlug, setSectorSlug] = useState(requestedSector)
   const [type, setType] = useState<ManifestationType>('Reclamação')
   const [description, setDescription] = useState('')
   const [anonymous, setAnonymous] = useState(true)

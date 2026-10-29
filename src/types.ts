@@ -14,6 +14,20 @@ export interface SurveyAnswers {
   departmentRating?: number
   nps?: number
   comment?: string
+  [answerKey: string]: number | string | undefined
+}
+
+export type SurveyQuestionType = 'rostinho' | 'nps' | 'texto'
+
+export interface SurveyQuestion {
+  id: string
+  text: string
+  type: SurveyQuestionType
+  required: boolean
+  active: boolean
+  order: number
+  sectorSlug: string | null
+  answerKey: string
 }
 
 export interface SurveyRecord {
@@ -21,6 +35,7 @@ export interface SurveyRecord {
   sectorSlug: string
   createdAt: string
   shift: 'Manhã' | 'Tarde' | 'Noite'
+  teamName?: string
   answers: SurveyAnswers
   mean: number | null
   complete: boolean
@@ -44,10 +59,24 @@ export interface Manifestation {
 export interface DashboardPayload {
   surveys: SurveyRecord[]
   manifestations: Manifestation[]
+  manifestationOpenCount?: number
+}
+
+export interface TVWallPayload {
+  responseCount: number
+  satisfactionAverage: number | null
+  nps: number | null
+  complimentCount: number
+  sectors: Array<{
+    sectorSlug: string
+    responseCount: number
+    satisfactionAverage: number
+  }>
 }
 
 export interface AuthUser {
   name: string
   email: string
-  role: 'Super Admin' | 'Admin de Setor' | 'Gestão' | 'Ouvidoria' | 'Visualizador'
+  role: 'Ouvidoria' | 'Gestão' | 'Administrador'
+  sectorSlug?: string
 }

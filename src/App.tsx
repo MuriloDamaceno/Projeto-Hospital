@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { ProtectedLayout } from './components/ManagementLayout'
-import { AdministrationPage, DashboardPage, LoginPage, OmbudsmanManagementPage, TVWallPage } from './pages/Management'
-import { OmbudsmanForm, PrivacyPage, SurveyFlow, SurveyThanks } from './pages/SurveyFlow'
-import { PublicHome } from './pages/PublicHome'
+import { AdministrationPage, DashboardPage, LoginPage, ManifestationDetailPage, OmbudsmanManagementPage, QuestionsManagementPage, TVWallPage } from './pages/Management'
+import { OmbudsmanForm, SurveyFlow, SurveyThanks } from './pages/SurveyFlow'
+import { ManualPage } from './pages/ManualPage'
+import { PrivacyPage, PublicHome } from './pages/PublicHome'
 import { createSurvey } from './services/api'
 import './App.css'
 
@@ -11,10 +12,14 @@ function StartSurvey() {
   const { slug = '' } = useParams()
   const navigate = useNavigate()
   const [error, setError] = useState('')
+  const startRequest = useRef<{ slug: string; promise: ReturnType<typeof createSurvey> } | null>(null)
 
   useEffect(() => {
     let active = true
-    createSurvey(slug).then((survey) => {
+    if (!startRequest.current || startRequest.current.slug !== slug) {
+      startRequest.current = { slug, promise: createSurvey(slug) }
+    }
+    startRequest.current.promise.then((survey) => {
       if (active) navigate(`/pesquisa/${slug}/pergunta/1?pesquisa=${encodeURIComponent(survey.id)}`, { replace: true })
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível iniciar a pesquisa.')
@@ -30,6 +35,7 @@ function RouterView() {
     <Routes>
       <Route path="/" element={<PublicHome />} />
       <Route path="/privacidade" element={<PrivacyPage />} />
+      <Route path="/manual" element={<ManualPage />} />
       <Route path="/pesquisa/:slug" element={<StartSurvey />} />
       <Route path="/pesquisa/:slug/pergunta/:step" element={<SurveyFlow />} />
       <Route path="/pesquisa/agradecimento" element={<SurveyThanks />} />
@@ -40,6 +46,8 @@ function RouterView() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="ouvidoria" element={<OmbudsmanManagementPage />} />
+        <Route path="ouvidoria/:manifestationId" element={<ManifestationDetailPage />} />
+        <Route path="perguntas" element={<QuestionsManagementPage />} />
         <Route path="configuracoes" element={<AdministrationPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
