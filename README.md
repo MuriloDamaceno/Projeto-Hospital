@@ -16,6 +16,9 @@ npm run dev
 
 Abra o endereço impresso pelo Vite, normalmente `http://localhost:5173`.
 
+Consulte o [manual de uso e aplicação](./MANUAL-DE-USO-E-APLICACAO.md) para
+instruções completas para pacientes, equipe, administração e publicação.
+
 Para validar a versão de entrega:
 
 ```bash
