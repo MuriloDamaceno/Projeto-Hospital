@@ -399,7 +399,7 @@ export function QuestionsManagementPage() {
     setError('')
     setNotice('')
     try {
-      await updateQuestion(question.id, input)
+      await updateQuestion(question.id, input, question.sectorSlug ?? undefined)
       setNotice(input.active === undefined ? 'Pergunta atualizada.' : input.active ? 'Pergunta ativada.' : 'Pergunta desativada.')
       setEditingId(null)
       await refresh()
@@ -432,23 +432,25 @@ export function QuestionsManagementPage() {
             <div className="question-row-content">
               {editingId === question.id
                 ? <div className="question-edit"><input aria-label="Texto da pergunta" value={editingText} maxLength={255} onChange={(event) => setEditingText(event.target.value)} /><button className="button button-primary" disabled={busy || !editingText.trim()} onClick={() => void saveQuestion(question, { text: editingText.trim() })}>Salvar</button><button className="text-button" disabled={busy} onClick={() => setEditingId(null)}>Cancelar</button></div>
-                : <><strong>{question.text}</strong><small>{question.type === 'rostinho' ? 'Rostinhos · escala de 1 a 5' : question.type === 'nps' ? 'Nota · escala de 0 a 10' : 'Resposta em texto'}{question.required ? ' · Obrigatória' : ' · Opcional'}</small></>}
+                : <><strong>{question.text}</strong><small>{question.type === 'rostinho' ? 'Rostinhos · escala de 1 a 5' : question.type === 'nps' ? 'Nota · escala de 0 a 10' : question.type === 'multipla' ? 'Múltipla escolha' : 'Resposta em texto'}{question.required ? ' · Obrigatória' : ' · Opcional'}</small></>}
             </div>
             {question.required
               ? <span className="status-pill status-required">Obrigatória</span>
               : <button className={`status-pill ${question.active ? 'status-complete' : 'status-partial'} question-toggle`} disabled={busy} onClick={() => void saveQuestion(question, { active: !question.active })}>{question.active ? 'Ativa' : 'Desativada'}</button>}
-            {!editingId && <button className="icon-button" disabled={busy} title="Editar pergunta" aria-label={`Editar ${question.text}`} onClick={() => { setEditingId(question.id); setEditingText(question.text) }}><ExternalLink size={15} /></button>}
+            {!editingId && !question.required && <button className="icon-button" disabled={busy} title="Editar pergunta" aria-label={`Editar ${question.text}`} onClick={() => { setEditingId(question.id); setEditingText(question.text) }}><ExternalLink size={15} /></button>}
           </article>)}
           {!questions.length && <div className="empty-state"><ListChecks size={24} /><strong>Nenhuma pergunta cadastrada</strong><span>Adicione uma pergunta para este escopo.</span></div>}
         </div>
-        <form className="add-question-form" onSubmit={(event) => void addQuestion(event)}>
+        {scopeSlug === null
+          ? <div className="dashboard-disclaimer"><ShieldCheck size={15} /> A pergunta geral NPS é definida pelo back-end e não pode ser editada nem removida por esta tela.</div>
+          : <form className="add-question-form" onSubmit={(event) => void addQuestion(event)}>
           <div className="form-section-title"><Plus size={17} /><strong>Adicionar pergunta opcional</strong></div>
           <div className="add-question-fields">
             <label className="form-field"><span>Texto da pergunta</span><input value={text} onChange={(event) => setText(event.target.value)} required maxLength={255} placeholder="Ex.: Como você avalia a limpeza?" /></label>
             <label className="form-field"><span>Formato da resposta</span><select value={type} onChange={(event) => setType(event.target.value as SurveyQuestionType)}><option value="rostinho">Rostinhos · escala de 1 a 5</option><option value="nps">Nota · escala de 0 a 10</option><option value="texto">Resposta em texto</option></select></label>
             <button type="submit" className="button button-primary" disabled={busy || !text.trim()}>{busy ? 'Salvando…' : 'Adicionar pergunta'} <Plus size={16} /></button>
           </div>
-        </form>
+        </form>}
       </section>
       <div className="dashboard-disclaimer"><ShieldCheck size={15} /> A pergunta geral obrigatória é protegida. Gestores só editam o próprio setor; apenas Administradores podem alterar perguntas gerais ou outro setor.</div>
       {!canManageGeneral && <div className="dashboard-disclaimer"><ShieldCheck size={15} /> O acesso a este setor também precisa ser validado pela API usando o perfil e o setor vinculados à sua conta.</div>}
@@ -532,7 +534,7 @@ export function TVWallPage() {
     <header className="tv-header"><Brand light /><div className="tv-live"><span className="live-dot" /> PAINEL PÚBLICO · DADOS AGREGADOS</div><div className="tv-time">{lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '--:--'}<button onClick={toggleFullscreen} title="Tela cheia"><ExternalLink size={18} /></button><button onClick={() => void refresh()} title="Atualizar painel"><RefreshCw size={18} /></button><Link to="/" title="Voltar ao início"><ArrowUpRight size={18} /></Link></div></header>
     {error && <div className="alert alert-error" role="alert">{error}</div>}
     {loading && !data ? <div className="loading-panel"><span className="spinner" /> Carregando painel…</div> : <div className="tv-content"><div className="tv-intro"><span className="eyebrow">CUIDADO QUE SE TRANSFORMA</span><h1>Juntos, fazemos melhor.</h1><p>Ouvimos cada pessoa para tornar a experiência de cuidado cada vez mais acolhedora.</p></div>
-      <section className="tv-metrics"><article><span className="tv-metric-icon">☺</span><span className="tv-metric-number">{average ? `${average.toFixed(1).replace('.', ',')}` : '—'}<small>/5</small></span><span className="tv-metric-caption">satisfação média</span></article><article><span className="tv-metric-icon">♡</span><span className="tv-metric-number">{nps === null ? '—' : nps}<small>{nps === null ? '' : ' pts'}</small></span><span className="tv-metric-caption">NPS de recomendação</span></article><article><span className="tv-metric-icon">✦</span><span className="tv-metric-number">{(data?.responseCount ?? 0).toLocaleString('pt-BR')}</span><span className="tv-metric-caption">experiências compartilhadas</span></article><article><span className="tv-metric-icon">♥</span><span className="tv-metric-number">{compliments.toLocaleString('pt-BR')}</span><span className="tv-metric-caption">elogios recebidos</span></article></section>
+      <section className="tv-metrics"><article><span className="tv-metric-icon">☺</span><span className="tv-metric-number">{average ? `${average.toFixed(1).replace('.', ',')}` : '—'}<small>/5</small></span><span className="tv-metric-caption">satisfação média</span></article><article><span className="tv-metric-icon">♡</span><span className="tv-metric-number">{nps === null ? '—' : nps}<small>{nps === null ? '' : ' pts'}</small></span><span className="tv-metric-caption">NPS de recomendação</span></article><article><span className="tv-metric-icon">✦</span><span className="tv-metric-number">{data?.responseCount === null ? '—' : (data?.responseCount ?? 0).toLocaleString('pt-BR')}</span><span className="tv-metric-caption">experiências compartilhadas</span></article><article><span className="tv-metric-icon">♥</span><span className="tv-metric-number">{compliments.toLocaleString('pt-BR')}</span><span className="tv-metric-caption">elogios recebidos</span></article></section>
       <section className="tv-sectors"><div className="tv-section-heading"><div><span className="eyebrow">NOSSA JORNADA</span><h2>Como estamos cuidando?</h2></div><span className="tv-privacy"><ShieldCheck size={15} /> Indicadores anônimos e agregados</span></div>{publicSectors.length ? <div className="tv-sector-grid">{publicSectors.map(({ department, average: score }) => <article key={department.id}><span className={`mini-department-icon tone-${department.icon}`}><DepartmentIcon name={department.icon} size={18} /></span><strong>{department.name}</strong><div className="tv-score-track"><i style={{ width: `${score / 5 * 100}%` }} /></div><span className="tv-score">{score.toFixed(1).replace('.', ',')}<small>/5</small></span></article>)}</div> : <div className="tv-empty">Os resultados por setor aparecem aqui quando houver pelo menos 5 respostas, para proteger a privacidade.</div>}</section>
       <footer className="tv-footer"><span><HeartPulseIcon /> Cada opinião nos ajuda a cuidar melhor.</span><span>Atualização automática · {lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '--:--'}</span></footer></div>}
   </main>

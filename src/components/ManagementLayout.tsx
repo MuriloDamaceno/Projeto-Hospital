@@ -16,6 +16,7 @@ const roleRoutes: Record<AuthUser['role'], string[]> = {
   Administrador: ['/gestao/dashboard', '/gestao/ouvidoria', '/gestao/perguntas', '/gestao/configuracoes', '/tv-wall'],
   Gestão: ['/gestao/dashboard', '/gestao/perguntas', '/tv-wall'],
   Ouvidoria: ['/gestao/ouvidoria'],
+  Visualizador: ['/gestao/dashboard', '/tv-wall'],
 }
 
 export function ProtectedLayout() {

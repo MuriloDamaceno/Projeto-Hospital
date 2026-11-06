@@ -51,40 +51,40 @@ Para zerar os dados de demonstração, abra o console do navegador e execute `lo
 | `/privacidade` | Informações de privacidade (texto inicial a validar) |
 | `/manual` | Guia rápido para paciente, Gestão, Ouvidoria e TV Wall |
 
-O fluxo do paciente carrega as perguntas ativas do setor na API. A primeira avaliação geral por rostinhos (1–5) é obrigatória; novas perguntas podem ser opcionais e usar rostinhos, NPS (0–10) ou texto. Cada resposta é salva ao avançar; perguntas desativadas não aparecem em pesquisas novas. A média de satisfação usa somente perguntas de rostinhos. Média parcial de até 2 leva à Ouvidoria; caso contrário, é exibido o agradecimento.
+O fluxo do paciente carrega as perguntas ativas do setor na API. A pergunta NPS geral (0–10) é obrigatória; as demais podem usar rostinhos (1–5), NPS ou texto. Cada resposta é salva ao avançar. A API calcula a média de satisfação com as avaliações por rostinhos e decide o encaminhamento: NPS até 6 ou média até 2 leva à Ouvidoria; caso contrário, exibe o agradecimento.
 
 **Decisão pendente no documento:** há conflito entre o corte de nota `≤ 3` em uma decisão e `≤ 2` em outros requisitos. A interface usa `≤ 2`, conforme RF32/RN16. Confirmem o limite final com o hospital e mantenham a regra sincronizada com o back-end.
 
 ## Conectar ao back-end
 
-1. Inicie o back-end Express e disponibilize os endpoints da tabela abaixo (ou alinhe os caminhos/contratos com o colega e ajuste `src/services/api.ts`).
-2. Crie `.env.local` na raiz a partir de `.env.example`.
-3. Configure `VITE_API_URL` com a origem da API, sem barra final, por exemplo `http://localhost:3000`.
-4. Reinicie o Vite depois de alterar as variáveis.
-5. Configure CORS no Express para aceitar a origem do front local e a URL publicada no Render.
+1. Inicie a API em `C:\Users\admin\Downloads\ProjFund_HospOswaldoDiesel_Back` com `npm install` e `npm run dev`. Sem conexão ao banco, ela usa dados em memória para desenvolvimento.
+2. Crie `.env.local` no front a partir de `.env.example`, com `VITE_API_URL=/backend` e `VITE_API_PROXY_TARGET=http://localhost:3000`. O proxy encaminha as chamadas sem o prefixo `/backend`.
+3. Crie `.env` no back a partir de `ProjFund_HospOswaldoDiesel_Back/.env.example` e configure `CORS_ORIGIN=http://localhost:5173`. Em produção, configure a URL exata do front; `*` não é aceito.
+4. Inicie o front com `npm install` e `npm run dev`. Reinicie o Vite após alterar variáveis.
+5. Para produção, configure `VITE_API_URL` com a origem HTTPS do back-end; o proxy do Vite só funciona em desenvolvimento.
 
-### Contrato esperado pelo front
+O adaptador em `src/services/api.ts` converte os contratos entre os projetos. Ele usa `GET /api/setores` e `GET /api/setores/:slug/fluxo`, `POST /api/pesquisas` e `PUT /api/pesquisas/:id/respostas/:perguntaId`, além dos endpoints de login, administração, dashboard, Ouvidoria e TV Wall do back-end. Respostas de pesquisa usam `x-survey-token`; a autenticação da equipe usa `Authorization: Bearer`. A API documenta os contratos em `/docs`.
 
-As respostas são JSON em camelCase. Respostas `4xx`/`5xx` são exibidas na tela; o front não troca silenciosamente para dados fictícios se a API falhar.
+**Acesso local de demonstração da API:** `super@fundacao.com` / `super123` ou `ouvidoria@fundacao.com` / `ouvidoria123`. Use esses usuários somente no modo de memória local; em produção, crie a conta inicial com `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD`.
+
+### Contratos usados pelo front
+
+Os DTOs em português do back-end são convertidos no adaptador para os tipos da interface. As pesquisas guardam o token de sessão no `sessionStorage`; falhas de API são exibidas sem troca automática para dados fictícios.
 
 | Método e rota | Autenticação | Corpo / resposta esperada |
 | --- | --- | --- |
-| `GET /api/v1/setores` | Pública | `Department[]`: `{ id, name, slug, description, icon, active }` |
-| `GET /api/v1/perguntas?setor=:slug` | Pública | Perguntas ativas gerais e do setor, ordenadas por `required`/`order`; cada uma retorna `{ id, text, type, required, active, order, sectorSlug, answerKey }` |
-| `GET /api/v1/perguntas?setor=:slug&inativas=true` | JWT | Perguntas do setor; somente Gestão do setor e Administrador |
-| `GET /api/v1/perguntas?escopo=geral&inativas=true` | JWT | Perguntas gerais; somente Administrador |
-| `POST /api/v1/perguntas` | JWT | Corpo `{ text, type, required, sectorSlug }`; Gestão só pode usar seu `sectorSlug`; Administrador pode usar `null` (geral) ou qualquer setor |
-| `PATCH /api/v1/perguntas/:id` | JWT | Corpo `{ text?, active? }`; respeita o mesmo escopo. A pergunta geral obrigatória não pode ser desativada |
-| `POST /api/v1/pesquisas` | Pública | Corpo `{ sectorSlug }`; retorna um `SurveyRecord` com `id` |
-| `POST /api/v1/pesquisas/:id/respostas` | Pública | Corpo `{ perguntaId, valor }`; salva atomicamente e retorna o `SurveyRecord` atualizado |
-| `POST /api/v1/pesquisas/:id/finalizar` | Pública | Finaliza e retorna `SurveyRecord` com média e estado de conclusão |
-| `POST /api/v1/pesquisas/:id/manifestacoes` | Pública | Corpo `{ surveyId, sectorSlug, type, description, anonymous, contact? }`; retorna `Manifestation` |
-| `POST /api/v1/auth/login` | Pública | Corpo `{ email, senha }`; retorna `{ token, user: { name, email, role, sectorSlug? } }`; `role` é `Administrador`, `Gestão` ou `Ouvidoria` |
-| `GET /api/v1/dashboard/resumo` | JWT | Administrador: dados de todos os setores e contagens/manifestações autorizadas; Gestão: somente o próprio setor e contagens de Ouvidoria, sem texto/telefone; Ouvidoria: usar apenas os dados necessários à sua caixa |
-| `GET /api/v1/tv-wall/resumo` | Pública | Somente `{ responseCount, satisfactionAverage, nps, complimentCount, sectors: [{ sectorSlug, responseCount, satisfactionAverage }] }`; o back-end só deve incluir setores que cumpram o volume mínimo |
-| `GET /api/v1/manifestacoes` | JWT | Somente Ouvidoria e Administrador |
-| `PATCH /api/v1/manifestacoes/:id` | JWT | Somente Ouvidoria e Administrador; corpo `{ status }`; retorna `204` ou JSON |
-| `POST /api/v1/setores` | JWT | Somente Administrador; corpo `{ name, slug, description }`; retorna o setor criado |
+| `GET /api/setores` | Pública | Setores ativos em português (`id`, `nome`, `slug`, `ativo`) |
+| `GET /api/setores/:slug/fluxo` | Pública | Setor e perguntas ativas gerais/do setor com opções |
+| `POST /api/pesquisas` | Pública | `{ setor_id, anonimo, consentimento }`; retorna `pesquisa_id` e token privado |
+| `PUT /api/pesquisas/:id/respostas/:perguntaId` | Token da pesquisa | `{ pergunta_id, valor }`, `{ pergunta_id, texto }` ou `{ pergunta_id, opcao_id }` |
+| `POST /api/pesquisas/:id/finalizar` | Token da pesquisa | Finaliza e retorna `destino` (`ouvidoria` ou `agradecimento`) |
+| `POST /api/pesquisas/:id/manifestacoes` | Token da pesquisa | Registra relato e exige consentimento quando há contato |
+| `POST /api/auth/login` | Pública | `{ email, senha }`; retorna `{ token, usuario }` |
+| `GET /api/dashboard/resumo` e `/api/dashboard/pesquisas` | JWT | Indicadores e registros resumidos; Gestão fica limitada ao setor vinculado |
+| `GET /api/manifestacoes`, `PATCH /api/manifestacoes/:id` | JWT | Ouvidoria/Administrador; status usa `aberta`, `em_tratamento` ou `concluida` |
+| `GET /api/tvwall` | Pública | Indicadores agregados; suprime métricas por setor abaixo de cinco respostas |
+| `GET /api/admin/perguntas`, `POST/PATCH /api/admin/perguntas` | JWT | Perguntas do setor permitido pelo perfil |
+| `POST /api/admin/setores` | JWT | Somente Super Admin |
 
 Formatos TypeScript completos: `src/types.ts`. Os filtros de Gestão incluem período, setor, turno, nota e equipe; equipes só são exibidas quando há ao menos cinco respostas no recorte. O token é armazenado em `sessionStorage` e enviado como `Authorization: Bearer <token>` em chamadas protegidas. O controle definitivo de perfil, autorização, consentimento, volume mínimo e acesso a telefone deve ser feito **também no back-end**; esconder campos na interface não substitui autorização de API.
 
@@ -93,10 +93,9 @@ Formatos TypeScript completos: `src/types.ts`. Os filtros de Gestão incluem per
 - **Administrador:** acesso total ao dashboard, setores, perguntas gerais, perguntas de qualquer setor e Ouvidoria.
 - **Gestão:** conta vinculada a um setor (`sectorSlug`); pode consultar indicadores e criar, editar ou desativar perguntas somente daquele setor. Não acessa a Ouvidoria.
 - **Ouvidoria:** acessa e atualiza somente as manifestações.
+- **Visualizador:** consulta somente o dashboard agregado e o TV Wall; não administra perguntas, setores ou manifestações.
 
 No modo de demonstração, a tela `/gestao/login` permite selecionar os três perfis. Em produção, o perfil e o setor devem vir do login da API, não de uma opção escolhida no navegador. A API precisa validar o perfil e o escopo do setor em cada endpoint protegido.
-
-Os endpoints de perguntas esperados pelo adaptador são `GET /api/v1/perguntas?setor=:slug` (perguntas ativas para a pesquisa), `GET /api/v1/perguntas?setor=:slug&inativas=true`, `GET /api/v1/perguntas?escopo=geral&inativas=true`, `POST /api/v1/perguntas` com `{ text, type, required, sectorSlug }` e `PATCH /api/v1/perguntas/:id` com `{ text?, active? }`. Tipos permitidos: `rostinho`, `nps` e `texto`. A pergunta geral obrigatória não pode ser desativada. Consulte `src/types.ts` e `src/services/api.ts` para os formatos completos.
 
 ## Publicar no Render
 
@@ -104,17 +103,17 @@ Os endpoints de perguntas esperados pelo adaptador são `GET /api/v1/perguntas?s
 2. Configure **Build Command** `npm install && npm run build` e **Publish Directory** `dist`.
 3. Adicione a variável de ambiente `VITE_API_URL` com a URL HTTPS do back-end.
 4. Adicione uma regra de rewrite `/*` → `/index.html` com status `200` para as rotas do React Router.
-5. Inclua a URL final do front na lista de origens CORS do back-end.
+5. Configure `CORS_ORIGIN` no back-end com a URL final do front (sem barra final).
 6. Abra e teste as rotas públicas, a tela de login, o dashboard e `/tv-wall` no link publicado.
 
 ## O que falta alinhar/fazer para a entrega
 
-- Seu colega deve implementar os endpoints e formatos acima (ou atualizar o adaptador `src/services/api.ts` para os contratos finais da API).
+- Para usar PostgreSQL, configure as variáveis do banco no back-end, execute `npm run migrate` e `npm run seed`; configure também `JWT_SECRET`, `CORS_ORIGIN` e as credenciais do administrador inicial.
 - Confirmem com o hospital o nome/identidade visual definitiva, o limite de nota da Ouvidoria e a política de retenção e privacidade. O texto em `/privacidade` é apenas um rascunho.
 - Validem permissões e acesso a dados pessoais com perfis reais; o back-end precisa proteger cada endpoint com JWT e autorização por perfil.
 - O back-end deve associar cada conta de Gestão a um setor e criar contas com os três perfis definidos. A criação e administração de contas continua a cargo da API.
-- Implementem os endpoints de perguntas e autorizem no back-end a Gestão somente para o próprio setor. A escala de trabalho ainda depende dos endpoints do back-end.
-- `GET /api/v1/tv-wall/resumo` deve retornar somente agregados; não reutilize no painel público os dados detalhados do dashboard.
+- A escala de trabalho continua sob responsabilidade dos endpoints do back-end.
+- `GET /api/tvwall` retorna somente agregados e aplica volume mínimo antes de exibir indicadores por setor.
 - Para Excel, o botão exporta CSV UTF-8 separado por ponto e vírgula, compatível com Excel. Para PDF, use **Imprimir → Salvar como PDF** no navegador.
 - Publicar o front e o back no Render, confirmar CORS e rotas SPA, validar em celular/tablet e preparar o manual e as telas/mock do Figma solicitados no documento.
 

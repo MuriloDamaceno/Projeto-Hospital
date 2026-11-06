@@ -17,7 +17,7 @@ export interface SurveyAnswers {
   [answerKey: string]: number | string | undefined
 }
 
-export type SurveyQuestionType = 'rostinho' | 'nps' | 'texto'
+export type SurveyQuestionType = 'rostinho' | 'nps' | 'texto' | 'multipla'
 
 export interface SurveyQuestion {
   id: string
@@ -28,6 +28,7 @@ export interface SurveyQuestion {
   order: number
   sectorSlug: string | null
   answerKey: string
+  options?: Array<{ id: string; value: number; label: string; emoji?: string | null }>
 }
 
 export interface SurveyRecord {
@@ -39,6 +40,7 @@ export interface SurveyRecord {
   answers: SurveyAnswers
   mean: number | null
   complete: boolean
+  destination?: 'ouvidoria' | 'agradecimento'
 }
 
 export type ManifestationType = 'Elogio' | 'Reclamação' | 'Sugestão'
@@ -63,7 +65,7 @@ export interface DashboardPayload {
 }
 
 export interface TVWallPayload {
-  responseCount: number
+  responseCount: number | null
   satisfactionAverage: number | null
   nps: number | null
   complimentCount: number
@@ -77,6 +79,6 @@ export interface TVWallPayload {
 export interface AuthUser {
   name: string
   email: string
-  role: 'Ouvidoria' | 'Gestão' | 'Administrador'
+  role: 'Ouvidoria' | 'Gestão' | 'Administrador' | 'Visualizador'
   sectorSlug?: string
 }

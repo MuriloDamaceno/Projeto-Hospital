@@ -59,7 +59,7 @@ export function SurveyFlow() {
 
   async function finishSurvey() {
     const survey = await completeSurvey(surveyId)
-    if (survey.mean !== null && survey.mean <= 2) {
+    if (survey.destination === 'ouvidoria' || (!survey.destination && survey.mean !== null && survey.mean <= 2)) {
       navigate(`/ouvidoria${query}&setor=${encodeURIComponent(slug)}`)
     } else {
       navigate(`/pesquisa/agradecimento${query}&setor=${encodeURIComponent(slug)}`)
@@ -92,11 +92,12 @@ export function SurveyFlow() {
     <>
       <span className="survey-kicker">PERGUNTA {currentStep} · {currentQuestion.required ? 'OBRIGATÓRIA' : 'OPCIONAL'}</span>
       <h1>{currentQuestion.text}</h1>
-      <p className="survey-subtitle">{currentQuestion.type === 'rostinho' ? 'Escolha o rostinho que melhor representa sua experiência.' : currentQuestion.type === 'nps' ? 'Escolha uma nota de 0 a 10.' : 'Responda com suas palavras. Esta pergunta é opcional.'}</p>
+      <p className="survey-subtitle">{currentQuestion.type === 'rostinho' ? 'Escolha o rostinho que melhor representa sua experiência.' : currentQuestion.type === 'nps' ? 'Escolha uma nota de 0 a 10.' : currentQuestion.type === 'multipla' ? 'Escolha uma das opções.' : 'Responda com suas palavras. Esta pergunta é opcional.'}</p>
       {currentQuestion.type === 'rostinho' && <div className="face-options" role="radiogroup" aria-label={currentQuestion.text}>
         {faces.map((face) => <button key={face.value} type="button" className={`face-option ${face.color}${selected === face.value ? ' selected' : ''}`} role="radio" aria-checked={selected === face.value} onClick={() => setSelected(face.value)}><span>{face.emoji}</span><small>{face.label}</small></button>)}
       </div>}
       {currentQuestion.type === 'nps' && <><div className="nps-scale" role="radiogroup" aria-label={currentQuestion.text}>{Array.from({ length: 11 }, (_, value) => <button key={value} type="button" role="radio" aria-checked={selected === value} className={selected === value ? 'nps-selected' : ''} onClick={() => setSelected(value)}>{value}</button>)}</div><div className="nps-labels"><span>Não recomendaria</span><span>Com certeza recomendaria</span></div></>}
+      {currentQuestion.type === 'multipla' && <div className="face-options" role="radiogroup" aria-label={currentQuestion.text}>{(currentQuestion.options ?? []).map((option) => <button key={option.id} type="button" className={`face-option${selected === Number(option.id) ? ' selected' : ''}`} role="radio" aria-checked={selected === Number(option.id)} onClick={() => setSelected(Number(option.id))}><span>{option.emoji ?? '•'}</span><small>{option.label}</small></button>)}</div>}
       {currentQuestion.type === 'texto' && <label className="comment-field"><span>Sua resposta</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={700} placeholder="Escreva aqui, se quiser…" rows={5} /><small>{comment.length}/700 caracteres</small></label>}
       <div className={`survey-actions${currentQuestion.required ? '' : ' survey-actions-split'}`}>
         {!currentQuestion.required && <button className="text-button" disabled={saving} onClick={() => void saveAndContinue('')}>Pular pergunta</button>}
