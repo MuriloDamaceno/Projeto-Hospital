@@ -289,3 +289,81 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
   .sector-grid { gap: 7px; background: transparent; }
   .sector-card { min-height: 72px; }
 }
+
+.button:hover:not(:disabled) { box-shadow: 0 7px 15px #e5323b20; }
+.button-dark { background: #5d6772; }
+.art-check { background: #e5323b; }
+.sector-card:hover:not(:disabled) { border-color: transparent; }
+.survey-exit:hover,.survey-kicker,.text-button:hover,.nps-scale button:hover,.survey-privacy svg,.result-note a,.check-row a,.ombudsman-note svg { color: #c82531; }
+.progress-track span { background: #e5323b; }
+.check-row input { accent-color: #e5323b; }
+.nps-scale button.nps-selected { background: #e5323b; border-color: #e5323b; color: #fff; }
+.face-option.selected { background: #fff2f3; border-color: #e5323b; box-shadow: 0 0 0 2px #e5323b20; }
+.face-option.selected small { color: #c82531; }
+.result-icon { color: #c82531; background: #fff0f1; }
+.alert-success { color: #ad2932; border-color: #f0c7ca; background: #fff2f3; }
+.legal-card h1,.legal-card h2,.manual-content > h1,.manual-card h2 { color: #414b56; }
+.manual-icon { color: #c82531; background: #fff0f1; }
+.manual-bottom { background: #f1f3f5; }
+.manual-bottom > span,.manual-bottom p { color: #5d6772; }
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible { outline-color: #e5323b; }
+
+.sidebar { background: #5d6772; }
+.sidebar-caption { color: #d2d7dc; }
+.side-link:hover,.side-link.active { background: #4f5964; }
+.side-link.active::before { background: #e5323b; }
+.sidebar-help { background: #525c67; }
+.help-icon { color: #fff; background: #69747f; }
+.sidebar-help a { color: #fff; }
+.avatar { color: #fff; background: #e5323b; }
+.page-topbar h1,.metric-card > strong,.panel-heading h2,.inbox-toolbar h2,.question-config-note h2,.department-bar strong,.table-sector,.manifestation-total,.manifestation-detail-meta strong,.manifestation-detail-body h2,.manifestation-detail-contact h2 { color: #414b56; }
+.current-sector-label,.dashboard-toolbar select,.select-wrap select,.department-bar-name,.table-wrap td,.summary-foot strong,.question-row-content > strong,.status-required,.role-row strong { color: #5d6772; }
+.sector-icon { color: #c82531; background: #fff0f1; }
+.status-required { background: #fff0f1; }
+.settings-callout { border-color: #dfe2e5; background: #f1f3f5; }
+.callout-lock { color: #c82531; }
+.settings-callout > strong { color: #414b56; }
+.inbox-open-link,.inbox-description-link:hover p { color: #c82531; }
+.live-dot { background: #e5323b; box-shadow: 0 0 0 3px #e5323b1a; }
+.metric-mint,.mini-department-icon { color: #c82531; background: #fff0f1; }
+.metric-up,.status-complete,.type-elogio { color: #c82531; }
+.status-complete { background: #fff0f1; }
+.metric-bottom-track span,.bar-track i { background: #e5323b; }
+.metric-bottom-track { background: #f2dfe1; }
+.nps-mini { background: linear-gradient(90deg,#e5323b 0 33%,#e8d18c 33% 66%,#8d969e 66%); }
+.nps-mini > span:nth-child(2) { background: #5d6772; box-shadow: 0 0 0 1px #5d6772; }
+.icon-button:hover { color: #c82531; background: #fff2f3; }
+.link-small,.inbox-open-link { color: #c82531; }
+.dashboard-disclaimer svg,.question-management-panel > .panel-heading > svg,.roles-panel .panel-heading > svg,.empty-state svg { color: #c82531; }
+.empty-state strong { color: #414b56; }
+.question-config-note p,.inbox-message p,.status-select select,.manifestation-detail-body p,.manifestation-detail-contact p { color: #5d6772; }
+.question-scope-select select,.question-edit input,.inbox-title-row strong,.ombudsman-summary-card strong { color: #414b56; }
+.settings-count,.form-section-title,.settings-callout > strong,.role-row strong { color: #c82531; }
+.form-section-title svg { color: #c82531; }
+.role-dot { background: #e5323b; }
+.settings-callout p { color: #5d6772; }
+.settings-callout a { color: #c82531; }
+
+.tv-wall { background: #5d6772; }
+.tv-intro .eyebrow,.tv-section-heading .eyebrow,.tv-privacy svg,.tv-footer > span:first-child > span { color: #ffb7bb; }
+.tv-metrics article,.tv-sectors { background: #4f5964; }
+.tv-metric-icon,.tv-score-track i { color: #ffb7bb; background: #606b76; }
+.tv-score-track i { background: #e5323b; }
+.tv-metric-number small,.tv-score small { color: #d2d7dc; }
+.tv-footer { color: #d2d7dc; }
+
+.login-art { background: #5d6772; }
+.login-art-icon { color: #fff; background: #69747f; }
+.login-art .eyebrow { color: #ffb7bb; }
+.login-form-wrap h1 { color: #414b56; }
+.login-page > header > a { color: #5d6772; }
+.demo-login:hover,.login-security svg { color: #c82531; }
+.demo-dot { background: #e5323b; }
+.management-mobilebar .brand img { width: 140px; }
+.mobile-management-link.active { color: #c82531; background: #fff0f1; }
+.inbox-description-link:hover p { color: #c82531; }
+.manifestation-detail-meta strong,.manifestation-detail-body h2,.manifestation-detail-contact h2 { color: #414b56; }
+
+@media (max-width: 560px) {
+  .management-mobilebar .brand img { width: 132px; }
+}
