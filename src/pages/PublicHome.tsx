@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowRight, Headset, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
@@ -36,10 +36,14 @@ export function PublicHome() {
       <header className="public-header">
         <Brand />
         <nav className="public-nav" aria-label="Navegação principal">
-          <a href="#setores">Como funciona</a>
+          <a href="#setores">Pesquisa</a>
           <Link to="/privacidade">Privacidade</Link>
           <Link className="staff-link" to="/gestao/login">Acesso da equipe <ArrowRight size={15} /></Link>
         </nav>
+        <a className="public-phone" href="tel:+555135461236" aria-label="Telefone geral: (51) 3546-1236">
+          <Headset size={29} strokeWidth={1.7} />
+          <span><small>Telefone geral</small><strong>(51) 3546-1236</strong></span>
+        </a>
       </header>
 
       <section className="hero-section">
@@ -50,11 +54,15 @@ export function PublicHome() {
           <a className="button button-primary hero-button" href="#setores">Começar pesquisa <ArrowDown size={17} /></a>
           <div className="trust-note"><ShieldCheck size={17} /> Sua resposta é tratada com respeito e privacidade.</div>
         </div>
-        <div className="hero-art" aria-label="Ilustração de cuidado e acolhimento" role="img">
-          <div className="art-glow" />
-          <div className="art-card art-card-top"><span className="art-face">😊</span><span><b>Seu cuidado importa</b><small>Estamos aqui para ouvir</small></span></div>
-          <div className="art-person"><div className="person-hair" /><div className="person-face"><span className="person-eye left" /><span className="person-eye right" /><span className="person-smile" /></div><div className="person-neck" /><div className="person-body"><span className="person-heart">+</span></div></div>
-          <div className="art-flower flower-one">✳</div><div className="art-flower flower-two">✿</div><div className="art-sparkle sparkle-one">✦</div><div className="art-sparkle sparkle-two">✧</div>
+        <div className="hero-art" aria-label="Fundação Hospitalar Dr. Oswaldo Diesel" role="img">
+          <div className="hospital-art-panel">
+            <span className="hospital-art-cross" aria-hidden="true">+</span>
+            <span className="hospital-art-label">Fundação Hospitalar</span>
+            <strong>Dr. Oswaldo Diesel</strong>
+            <span className="hospital-art-rule" />
+            <p>Ouvir também é cuidar.</p>
+          </div>
+          <div className="art-card art-card-top"><span className="art-face">+</span><span><b>Sua experiência importa</b><small>Estamos aqui para ouvir</small></span></div>
           <div className="art-card art-card-bottom"><span className="art-check">✓</span><span><b>Pesquisa segura</b><small>Leva menos de 1 minuto</small></span></div>
         </div>
       </section>

@@ -177,3 +177,134 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
   .manifestation-detail { padding: 16px; }
   .manifestation-detail-meta { grid-template-columns: 1fr; gap: 14px; }
 }
+
+.brand { gap: 8px; }
+.brand-mark { width: 43px; height: 43px; color: #e5323b; background: transparent; border-radius: 0; font-family: Arial, sans-serif; font-size: 51px; font-weight: 700; line-height: .8; }
+.brand-copy { line-height: 1.02; }
+.brand-copy strong { color: #e5323b; font-size: 25px; letter-spacing: -.6px; }
+.brand-copy strong span { color: #e5323b; }
+.brand-copy small { color: #59636e; font-size: 9px; letter-spacing: 0; text-transform: none; line-height: 1.2; margin-top: 2px; }
+.brand-light .brand-mark { color: #fff; background: transparent; }
+.brand-light .brand-copy strong,.brand-light .brand-copy strong span { color: #fff; }
+.brand-light .brand-copy small { color: #d3d8dc; }
+
+.public-page,.legal-page,.manual-page,.survey-page,.tv-wall { border-top: 4px solid #247a92; }
+.public-page { background: #fff; }
+.public-header { max-width: 1250px; height: 94px; padding: 0 32px; border-bottom: 4px solid #e5323b; background: #fff; gap: 24px; }
+.public-nav { gap: 20px; color: #59636e; font-size: 13px; white-space: nowrap; }
+.public-nav > a + a { border-left: 1px solid #d6dade; padding-left: 18px; }
+.public-nav a:hover,.public-footer a:hover { color: #c82531; }
+.public-nav .staff-link,.staff-link { color: #c82531; }
+.public-phone { display: inline-flex; align-items: center; gap: 9px; color: #e5323b; text-decoration: none; white-space: nowrap; }
+.public-phone span,.public-phone small,.public-phone strong { display: block; }
+.public-phone small { color: #59636e; font-size: 10px; }
+.public-phone strong { margin-top: 2px; font-size: 18px; letter-spacing: -.4px; }
+.hero-section { max-width: 1250px; min-height: 420px; }
+.hero-copy h1 { color: #414b56; font-weight: 700; letter-spacing: -2px; }
+.hero-copy h1 span { color: #e5323b; }
+.eyebrow,.page-eyebrow { color: #d72d37; }
+.hero-copy > p { color: #66717c; }
+.hero-button { border-radius: 3px; }
+.button { border-radius: 3px; }
+.button-primary { background: #e5323b; }
+.button-primary:hover:not(:disabled) { background: #c82531; }
+.button-outline { border-color: #d6dade; color: #c82531; }
+.button-dark { background: #5d6772; }
+.trust-note svg { color: #e5323b; }
+.hero-art { min-height: 350px; transform: none; }
+.hospital-art-panel { position: relative; width: min(100%, 470px); min-height: 300px; padding: 42px 38px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; background: #5d6772; color: #fff; }
+.hospital-art-cross { color: #fff; font-size: 75px; font-weight: 700; line-height: .8; }
+.hospital-art-label { margin-top: 19px; font-size: 14px; }
+.hospital-art-panel > strong { margin-top: 4px; font-size: 26px; }
+.hospital-art-rule { width: 100%; height: 3px; margin-top: 20px; background: #e5323b; }
+.hospital-art-panel p { margin: 15px 0 0; font-size: 18px; }
+.art-card { border-radius: 2px; border-color: #e6e8ea; box-shadow: 0 8px 22px #30394418; }
+.art-card b { color: #414b56; }
+.art-card small { color: #737d87; }
+.art-face { width: 28px; height: 28px; display: grid; place-items: center; border: 2px solid #e5323b; border-radius: 50%; color: #e5323b; font-size: 21px; font-weight: 700; line-height: 1; }
+.art-check { border-radius: 2px; background: #e5323b; }
+.sector-section { max-width: 1250px; border-top-color: #e5323b; }
+.section-heading h2 { color: #414b56; }
+.section-heading p { color: #6f7983; }
+.sector-grid { gap: 2px; background: #fff; }
+.sector-card { min-height: 94px; border: 0; border-radius: 2px; background: #e5323b; color: #fff; }
+.sector-card:hover:not(:disabled) { border-color: transparent; background: #c82531; transform: translateY(-1px); box-shadow: 0 5px 14px #b51e2b30; }
+.sector-icon,.sector-tone-1 .sector-icon,.sector-tone-2 .sector-icon,.sector-tone-3 .sector-icon,.sector-tone-4 .sector-icon,.sector-tone-5 .sector-icon { color: #fff; background: transparent; border: 1px solid #ffffff80; border-radius: 2px; }
+.sector-info strong { color: #fff; }
+.sector-info small { color: #ffe3e5; }
+.sector-arrow { color: #fff; border-color: #ffffff70; border-radius: 2px; }
+.section-footnote { color: #6f7983; }
+.section-footnote a,.tiny-lock { color: #c82531; }
+.public-footer { max-width: 1250px; border-top-color: #dfe2e5; color: #727c86; }
+.public-footer .brand-mark { width: 34px; height: 34px; font-size: 40px; }
+.public-footer .brand-copy strong { font-size: 18px; }
+.public-footer .brand-copy small { font-size: 8px; }
+
+.survey-page { background: #f5f6f7; }
+.survey-header { border-bottom: 4px solid #e5323b; }
+.survey-exit { color: #626d78; }
+.survey-card,.ombudsman-card,.survey-result-card { border-radius: 2px; border-color: #dfe2e5; box-shadow: none; }
+.survey-card h1,.ombudsman-card h1,.survey-result-card h1 { color: #414b56; letter-spacing: -.4px; }
+.survey-subtitle,.survey-progress .progress-caption { color: #66717c; }
+.progress-track { border-radius: 0; background: #e2e4e6; }
+.progress-track span { border-radius: 0; }
+.face-option { border-radius: 2px; }
+.face-option:hover { border-color: #ed9ba0; }
+.face-option.selected { background: #fff2f3; border-color: #e5323b; box-shadow: 0 0 0 2px #e5323b20; }
+.face-option.selected small { color: #c82531; }
+.nps-scale button { border-radius: 2px; }
+.comment-field textarea,.form-field textarea,.form-field input,.form-field select { border-radius: 2px; border-color: #d6dade; }
+.comment-field textarea:focus,.form-field textarea:focus,.form-field input:focus,.form-field select:focus { border-color: #e5323b; box-shadow: 0 0 0 3px #e5323b20; }
+.result-icon { border-radius: 2px; background: #fff0f1; }
+.survey-privacy svg { color: #e5323b; }
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible { outline-color: #e5323b; }
+
+.management-app { background: #f5f6f7; color: #414b56; }
+.sidebar { background: #5d6772; }
+.sidebar-caption { color: #d2d7dc; }
+.side-link { border-radius: 2px; }
+.side-link:hover,.side-link.active { background: #4f5964; }
+.side-link.active::before { background: #e5323b; }
+.sidebar-help { border-radius: 2px; background: #525c67; }
+.help-icon { border-radius: 2px; color: #fff; background: #69747f; }
+.sidebar-help a { color: #fff; }
+.avatar { border-radius: 2px; color: #fff; background: #e5323b; }
+.page-topbar h1 { color: #414b56; letter-spacing: -.4px; }
+.management-footer svg,.icon-button:hover,.link-small { color: #c82531; }
+.icon-button:hover { background: #fff2f3; }
+.mobile-management-link { border-radius: 2px; }
+.mobile-management-link.active { color: #c82531; background: #fff0f1; }
+
+@media (max-width: 1100px) {
+  .public-header { gap: 16px; }
+  .public-nav { gap: 12px; }
+  .public-nav > a + a { padding-left: 11px; }
+  .public-phone strong { font-size: 15px; }
+}
+@media (max-width: 800px) {
+  .public-header { height: 82px; padding: 0 22px; }
+  .public-phone { display: none; }
+  .public-nav { margin-left: auto; }
+  .hospital-art-panel { min-height: 270px; padding: 30px; }
+}
+@media (max-width: 560px) {
+  .public-header { height: 70px; padding: 0 17px; }
+  .public-header .brand-mark { width: 34px; height: 34px; font-size: 41px; }
+  .public-header .brand-copy strong { font-size: 19px; }
+  .public-header .brand-copy small { font-size: 7px; }
+  .public-nav { gap: 9px; }
+  .public-nav > a:first-child,.public-nav > a:nth-child(2),.public-nav > a:nth-child(3) { display: none; }
+  .public-nav > a + a { border-left: 0; padding-left: 0; }
+  .public-nav .staff-link { font-size: 10px; }
+  .hero-section { padding-top: 29px; }
+  .hero-art { min-height: 245px; margin: 4px 0 0; }
+  .hospital-art-panel { min-height: 220px; padding: 26px; }
+  .hospital-art-cross { font-size: 60px; }
+  .hospital-art-label { margin-top: 12px; font-size: 12px; }
+  .hospital-art-panel > strong { font-size: 20px; }
+  .hospital-art-panel p { font-size: 15px; }
+  .art-card-top { top: 0; left: -6px; }
+  .art-card-bottom { bottom: -3px; right: -6px; }
+  .sector-grid { gap: 7px; background: transparent; }
+  .sector-card { min-height: 72px; }
+}
