@@ -320,7 +320,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
 .avatar { color: #fff; background: #e5323b; }
 .page-topbar h1,.metric-card > strong,.panel-heading h2,.inbox-toolbar h2,.question-config-note h2,.department-bar strong,.table-sector,.manifestation-total,.manifestation-detail-meta strong,.manifestation-detail-body h2,.manifestation-detail-contact h2 { color: #414b56; }
 .current-sector-label,.dashboard-toolbar select,.select-wrap select,.department-bar-name,.table-wrap td,.summary-foot strong,.question-row-content > strong,.status-required,.role-row strong { color: #5d6772; }
-.sector-icon { color: #c82531; background: #fff0f1; }
+.settings-sector .sector-icon { color: #c82531; background: #fff0f1; }
 .status-required { background: #fff0f1; }
 .settings-callout { border-color: #dfe2e5; background: #f1f3f5; }
 .callout-lock { color: #c82531; }
