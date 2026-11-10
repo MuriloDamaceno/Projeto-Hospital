@@ -107,10 +107,12 @@ No modo de demonstração, a tela `/gestao/login` permite selecionar os três pe
 
 1. Envie o repositório ao GitHub e crie um **Static Site** no Render apontando para a pasta do front.
 2. Configure **Build Command** `npm install && npm run build` e **Publish Directory** `dist`.
-3. O arquivo `.env.production` já aponta `VITE_API_URL` para `https://projfund-hosposwaldodiesel-back.onrender.com`. Se preferir configurar no painel do Render, use esse mesmo valor na variável de ambiente do Static Site.
+3. O arquivo `.env.production` já aponta `VITE_API_URL` para `https://projfund-hosposwaldodiesel-back.onrender.com`. Se preferir configurar no painel do Render, use esse mesmo valor na variável de ambiente do Static Site. O Vite incorpora essa variável durante o build: após alterá-la, faça um novo deploy do front.
 4. Adicione uma regra de rewrite `/*` → `/index.html` com status `200` para as rotas do React Router.
 5. No serviço do back-end no Render, configure `CORS_ORIGIN` como `https://projeto-hospital-pqxh.onrender.com` (origem do front, sem barra final). Não use a URL do back-end nesse campo.
 6. Abra e teste as rotas públicas, a tela de login, o dashboard e `/tv-wall` no link publicado.
+
+As contas de demonstração (`super@fundacao.com` e `ouvidoria@fundacao.com`) existem somente no modo local em memória e não funcionam na implantação com PostgreSQL. Para criar o administrador inicial de produção, configure `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` no serviço do back-end e execute `npm run seed` após `npm run migrate`. O seed não cria uma conta de Ouvidoria nem de Gestão; essas contas precisam ser provisionadas pela API/banco de produção.
 
 ## O que falta alinhar/fazer para a entrega
 

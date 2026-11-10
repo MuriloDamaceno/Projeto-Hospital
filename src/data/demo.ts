@@ -12,8 +12,8 @@ export const departments: Department[] = [
 export const demoQuestions: SurveyQuestion[] = [
   { id: 'geral', text: 'De modo geral, como foi sua experiência?', type: 'rostinho', required: true, active: true, order: 1, sectorSlug: null, answerKey: 'overallRating' },
   { id: 'setor', text: 'Como foi o atendimento neste setor?', type: 'rostinho', required: false, active: true, order: 2, sectorSlug: null, answerKey: 'departmentRating' },
-  { id: 'recomendacao', text: 'De 0 a 10, o quanto você recomendaria nosso hospital?', type: 'nps', required: false, active: true, order: 3, sectorSlug: null, answerKey: 'nps' },
-  { id: 'comentario', text: 'Quer contar mais alguma coisa?', type: 'texto', required: false, active: true, order: 4, sectorSlug: null, answerKey: 'comment' },
+  { id: 'recomendacao', text: 'De 0 a 10, o quanto você recomendaria nosso hospital?', type: 'nps', required: false, active: true, order: 4, sectorSlug: null, answerKey: 'nps' },
+  { id: 'comentario', text: 'Quer contar mais alguma coisa?', type: 'texto', required: false, active: true, order: 3, sectorSlug: null, answerKey: 'comment' },
 ]
 
 const sampleRatings = [5, 4, 5, 4, 3, 5, 4, 5, 2, 4, 5, 3, 4, 5, 4, 3, 5, 4, 5, 4, 2, 5, 4, 3, 5, 4, 5, 4]

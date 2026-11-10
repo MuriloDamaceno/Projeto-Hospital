@@ -90,6 +90,14 @@ function mapQuestion(question: BackendQuestion, sectorSlug: string): SurveyQuest
   }
 }
 
+function orderSurveyQuestions(questions: SurveyQuestion[]): SurveyQuestion[] {
+  return questions.sort((a, b) =>
+    Number(a.type === 'nps') - Number(b.type === 'nps')
+    || Number(b.required) - Number(a.required)
+    || a.order - b.order,
+  )
+}
+
 function mapManifestation(
   manifestation: {
     id: number
@@ -174,11 +182,11 @@ export async function getDepartments(): Promise<Department[]> {
 export async function getQuestions(sectorSlug: string): Promise<SurveyQuestion[]> {
   if (API_BASE_URL) {
     const response = await backendRequest<{ fluxo: BackendQuestion[] }>(`/api/setores/${encodeURIComponent(sectorSlug)}/fluxo`)
-    return response.fluxo.map((question) => mapQuestion(question, sectorSlug))
+    return orderSurveyQuestions(response.fluxo.map((question) => mapQuestion(question, sectorSlug)))
   }
-  return readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
+  return orderSurveyQuestions(readDemo(DEMO_QUESTIONS_KEY, () => demoQuestions)
     .filter((question) => question.active && (question.sectorSlug === null || question.sectorSlug === sectorSlug))
-    .sort((a, b) => Number(b.required) - Number(a.required) || a.order - b.order)
+  )
 }
 
 export async function getManagedQuestions(sectorSlug: string | null): Promise<SurveyQuestion[]> {
