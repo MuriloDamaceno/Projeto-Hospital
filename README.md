@@ -44,8 +44,8 @@ Para zerar os dados de demonstração, abra o console do navegador e execute `lo
 | --- | --- |
 | `/` | Página inicial e escolha do setor |
 | `/pesquisa/:setor` | Início de pesquisa por link/QR Code |
-| `/pesquisa/:setor/pergunta/:etapa?pesquisa=:id` | Pergunta individual e salvamento por etapa |
-| `/ouvidoria?pesquisa=:id` | Manifestação associada à pesquisa |
+| `/pesquisa/:setor` | Pesquisa do setor; a etapa e o ID ficam na sessão do navegador |
+| `/ouvidoria` | Manifestação associada à pesquisa da sessão atual |
 | `/pesquisa/agradecimento` | Confirmação da pesquisa |
 | `/gestao/login` | Acesso da equipe |
 | `/gestao/dashboard` | Indicadores e exportação; Gestão fica restrita ao próprio setor |
@@ -59,12 +59,15 @@ Para zerar os dados de demonstração, abra o console do navegador e execute `lo
 
 O fluxo do paciente carrega as perguntas ativas do setor na API. A pergunta NPS geral
 (0–10) é obrigatória; as demais podem usar rostinhos (1–5), NPS ou texto. Cada
-resposta é salva ao avançar. As URLs das etapas seguem o formato
-`/pesquisa/<setor>?pergunta=<número>&pesquisa=<id>`; os QR Codes usam somente
-`/pesquisa/<setor>` para iniciar uma nova pesquisa. Links antigos com
-`/pergunta/<número>` são redirecionados para o formato atual. A API calcula a média
-de satisfação com as avaliações por rostinhos e decide o encaminhamento: NPS até 6
-ou média até 2 leva à Ouvidoria; caso contrário, exibe o agradecimento.
+resposta é salva ao avançar. A URL permanece limpa como `/pesquisa/<setor>` durante
+todo o fluxo; a etapa e o ID da pesquisa ficam na sessão da aba atual para permitir
+atualizar a página sem expor esses dados na URL. Os QR Codes usam a mesma URL curta
+para iniciar uma nova pesquisa. Links antigos com etapa e ID na URL continuam
+funcionando e são convertidos para o formato limpo. Como o estado é da sessão do
+navegador, copiar o link durante uma pesquisa abre uma nova pesquisa em outra aba ou
+dispositivo. A API calcula a média de satisfação com as avaliações por rostinhos e
+decide o encaminhamento: NPS até 6 ou média até 2 leva à Ouvidoria; caso contrário,
+exibe o agradecimento.
 
 **Decisão pendente no documento:** há conflito entre o corte de nota `≤ 3` em uma decisão e `≤ 2` em outros requisitos. A interface usa `≤ 2`, conforme RF32/RN16. Confirmem o limite final com o hospital e mantenham a regra sincronizada com o back-end.
 

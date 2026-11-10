@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ProtectedLayout } from './components/ManagementLayout'
 import { AdministrationPage, DashboardPage, LoginPage, ManifestationDetailPage, OmbudsmanManagementPage, QuestionsManagementPage, TVWallPage } from './pages/Management'
@@ -6,11 +6,10 @@ import { OmbudsmanForm, SurveyFlow, SurveyThanks } from './pages/SurveyFlow'
 import { ManualPage } from './pages/ManualPage'
 import { PrivacyPage, PublicHome } from './pages/PublicHome'
 import { createSurvey } from './services/api'
+import { readSurveyProgress, saveSurveyProgress } from './services/surveyProgress'
 import './App.css'
 
-function StartSurvey() {
-  const { slug = '' } = useParams()
-  const navigate = useNavigate()
+function StartSurvey({ slug, onStarted }: { slug: string; onStarted: (surveyId: string) => void }) {
   const [error, setError] = useState('')
   const startRequest = useRef<{ slug: string; promise: ReturnType<typeof createSurvey> } | null>(null)
 
@@ -20,29 +19,66 @@ function StartSurvey() {
       startRequest.current = { slug, promise: createSurvey(slug) }
     }
     startRequest.current.promise.then((survey) => {
-      if (active) navigate(`/pesquisa/${slug}?pergunta=1&pesquisa=${encodeURIComponent(survey.id)}`, { replace: true })
+      if (active) onStarted(survey.id)
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível iniciar a pesquisa.')
     })
     return () => { active = false }
-  }, [navigate, slug])
+  }, [onStarted, slug])
 
   return <main className="survey-loading-page">{error ? <div className="alert alert-error" role="alert">{error}<p><a href="/">Voltar ao início</a></p></div> : <><span className="spinner" /> Preparando sua pesquisa…</>}</main>
 }
 
 function SurveyEntry() {
+  const { slug = '' } = useParams()
   const [searchParams] = useSearchParams()
-  return searchParams.get('pesquisa') ? <SurveyFlow /> : <StartSurvey />
+  const navigate = useNavigate()
+  const locationQuery = searchParams.toString()
+  const legacySurveyId = searchParams.get('i') ?? searchParams.get('pesquisa')
+  const legacyStep = Number(searchParams.get('p') ?? searchParams.get('pergunta') ?? '1')
+  const [progress, setProgress] = useState(() => {
+    if (legacySurveyId && Number.isInteger(legacyStep) && legacyStep > 0) {
+      return { surveyId: legacySurveyId, sectorSlug: slug, step: legacyStep }
+    }
+    const stored = readSurveyProgress()
+    return stored?.sectorSlug === slug ? stored : null
+  })
+
+  useEffect(() => {
+    if (legacySurveyId && Number.isInteger(legacyStep) && legacyStep > 0) {
+      const restored = { surveyId: legacySurveyId, sectorSlug: slug, step: legacyStep }
+      saveSurveyProgress(restored)
+    }
+    if (locationQuery) navigate(`/pesquisa/${slug}`, { replace: true })
+  }, [legacySurveyId, legacyStep, locationQuery, navigate, slug])
+
+  const onStarted = useCallback((surveyId: string) => {
+    const started = { surveyId, sectorSlug: slug, step: 1 }
+    saveSurveyProgress(started)
+    setProgress(started)
+  }, [slug])
+
+  const onStepChange = useCallback((step: number) => {
+    setProgress((current) => {
+      if (!current) return current
+      const updated = { ...current, step }
+      saveSurveyProgress(updated)
+      return updated
+    })
+  }, [])
+
+  if (!progress) return <StartSurvey slug={slug} onStarted={onStarted} />
+  return <SurveyFlow slug={slug} surveyId={progress.surveyId} currentStep={progress.step} onStepChange={onStepChange} />
 }
 
 function LegacySurveyRoute() {
   const { slug = '', step = '1' } = useParams()
   const [searchParams] = useSearchParams()
-  const query = new URLSearchParams([['pergunta', step]])
-  const surveyId = searchParams.get('pesquisa')
-  if (surveyId) query.append('pesquisa', surveyId)
+  const query = new URLSearchParams([['p', step]])
+  const surveyId = searchParams.get('i') ?? searchParams.get('pesquisa')
+  if (surveyId) query.append('i', surveyId)
   for (const [key, value] of searchParams) {
-    if (key !== 'pergunta' && key !== 'pesquisa') query.append(key, value)
+    if (!['p', 'pergunta', 'i', 'pesquisa'].includes(key)) query.append(key, value)
   }
   return <Navigate to={`/pesquisa/${slug}?${query.toString()}`} replace />
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Check, Heart, ShieldCheck } from 'lucide-react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { completeSurvey, createManifestation, getDepartments, getQuestions, saveSurveyAnswer } from '../services/api'
+import { clearSurveyProgress, readSurveyProgress } from '../services/surveyProgress'
 import { departments as fallbackDepartments } from '../data/demo'
 import type { Department, ManifestationType, SurveyQuestion } from '../types'
 
@@ -18,9 +19,12 @@ function FeedbackFooter() {
   return <div className="survey-privacy"><ShieldCheck size={16} /> Resposta protegida <span>•</span> <Link to="/privacidade">Como usamos seus dados</Link></div>
 }
 
-export function SurveyFlow() {
-  const { slug = '' } = useParams()
-  const [searchParams] = useSearchParams()
+export function SurveyFlow({ slug, surveyId, currentStep, onStepChange }: {
+  slug: string
+  surveyId: string
+  currentStep: number
+  onStepChange: (step: number) => void
+}) {
   const [department, setDepartment] = useState<Department | null>(null)
   const [questions, setQuestions] = useState<SurveyQuestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,8 +33,6 @@ export function SurveyFlow() {
   const [selected, setSelected] = useState<number | null>(null)
   const [comment, setComment] = useState('')
   const navigate = useNavigate()
-  const surveyId = searchParams.get('pesquisa') ?? ''
-  const currentStep = Number(searchParams.get('pergunta') ?? '1')
   const currentDepartment = department ?? fallbackDepartments.find((item) => item.slug === slug) ?? null
 
   useEffect(() => {
@@ -52,7 +54,6 @@ export function SurveyFlow() {
   if (!currentDepartment) return <SurveyMessage title="Não encontramos esse setor" text="Volte ao início e escolha um dos setores disponíveis." />
   if (!surveyId) return <SurveyMessage title="Pesquisa não iniciada" text="Volte ao início e escolha o setor onde você foi atendido." />
 
-  const query = `?pesquisa=${encodeURIComponent(surveyId)}`
   const currentQuestion = questions[currentStep - 1]
   const lastQuestion = currentStep === questions.length
   const progress = questions.length ? Math.min(100, Math.round((currentStep / questions.length) * 100)) : 0
@@ -60,9 +61,9 @@ export function SurveyFlow() {
   async function finishSurvey() {
     const survey = await completeSurvey(surveyId)
     if (survey.destination === 'ouvidoria' || (!survey.destination && survey.mean !== null && survey.mean <= 2)) {
-      navigate(`/ouvidoria${query}&setor=${encodeURIComponent(slug)}`)
+      navigate('/ouvidoria')
     } else {
-      navigate(`/pesquisa/agradecimento${query}&setor=${encodeURIComponent(slug)}`)
+      navigate('/pesquisa/agradecimento')
     }
   }
 
@@ -79,7 +80,7 @@ export function SurveyFlow() {
       if (lastQuestion) {
         await finishSurvey()
       } else {
-        navigate(`/pesquisa/${slug}?pergunta=${currentStep + 1}&pesquisa=${encodeURIComponent(surveyId)}`)
+        onStepChange(currentStep + 1)
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível salvar sua resposta.')
@@ -122,13 +123,12 @@ export function SurveyFlow() {
 }
 
 export function SurveyThanks() {
-  const [searchParams] = useSearchParams()
-  const surveyId = searchParams.get('pesquisa')
-  const sectorSlug = searchParams.get('setor') ?? undefined
-  return <SurveyMessage title="Obrigado por nos contar!" text="Sua resposta foi registrada. Ela ajuda a equipe a tornar o cuidado cada vez melhor." icon="heart" surveyId={surveyId ?? undefined} sectorSlug={sectorSlug} />
+  const progress = readSurveyProgress()
+  const surveyId = progress?.surveyId
+  return <SurveyMessage title="Obrigado por nos contar!" text="Sua resposta foi registrada. Ela ajuda a equipe a tornar o cuidado cada vez melhor." icon="heart" surveyId={surveyId ?? undefined} />
 }
 
-function SurveyMessage({ title, text, icon = 'check', surveyId, sectorSlug }: { title: string; text: string; icon?: 'heart' | 'check'; surveyId?: string; sectorSlug?: string }) {
+function SurveyMessage({ title, text, icon = 'check', surveyId }: { title: string; text: string; icon?: 'heart' | 'check'; surveyId?: string }) {
   return (
     <main className="survey-page">
       <header className="survey-header"><Brand /><Link className="survey-exit" to="/">Início</Link></header>
@@ -136,7 +136,7 @@ function SurveyMessage({ title, text, icon = 'check', surveyId, sectorSlug }: { 
         <div className="result-icon">{icon === 'heart' ? <Heart size={30} fill="currentColor" /> : <Check size={31} />}</div>
         <span className="survey-kicker">CUIDADO QUE MELHORA</span>
         <h1>{title}</h1><p>{text}</p>
-        {surveyId && <p className="result-note">Se preferir, você ainda pode <Link to={`/ouvidoria?pesquisa=${encodeURIComponent(surveyId)}${sectorSlug ? `&setor=${encodeURIComponent(sectorSlug)}` : ''}`}>falar com a Ouvidoria</Link>.</p>}
+        {surveyId && <p className="result-note">Se preferir, você ainda pode <Link to="/ouvidoria">falar com a Ouvidoria</Link>.</p>}
         <Link to="/" className="button button-primary">Voltar ao início <ArrowRight size={16} /></Link>
       </section>
       <FeedbackFooter />
@@ -145,9 +145,9 @@ function SurveyMessage({ title, text, icon = 'check', surveyId, sectorSlug }: { 
 }
 
 export function OmbudsmanForm() {
-  const [searchParams] = useSearchParams()
-  const surveyId = searchParams.get('pesquisa') ?? ''
-  const requestedSector = searchParams.get('setor') ?? ''
+  const progress = readSurveyProgress()
+  const surveyId = progress?.surveyId ?? ''
+  const requestedSector = progress?.sectorSlug ?? ''
   const [sectorSlug, setSectorSlug] = useState(requestedSector)
   const [type, setType] = useState<ManifestationType>('Reclamação')
   const [description, setDescription] = useState('')
@@ -182,6 +182,7 @@ export function OmbudsmanForm() {
     setError('')
     try {
       await createManifestation({ surveyId, sectorSlug, type, description: description.trim(), anonymous, ...(anonymous ? {} : { contact: contact.trim() }) })
+      clearSurveyProgress()
       setSent(true)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível enviar sua manifestação.')

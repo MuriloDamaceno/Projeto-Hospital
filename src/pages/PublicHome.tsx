@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { getDepartments } from '../services/api'
+import { clearSurveyProgress } from '../services/surveyProgress'
 import type { Department } from '../types'
 
 export function PublicHome() {
@@ -19,6 +20,7 @@ export function PublicHome() {
   }, [])
 
   function begin(slug: string) {
+    clearSurveyProgress()
     setStarting(slug)
     setError('')
     navigate(`/pesquisa/${slug}`)
