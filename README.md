@@ -16,6 +16,9 @@ npm run dev
 
 Abra o endereço impresso pelo Vite, normalmente `http://localhost:5173`.
 
+Para executar a demonstração local sem conectar à API, use `npm run dev:demo`.
+Ela usa dados fictícios salvos no navegador e não deve receber dados reais de pacientes.
+
 Consulte o [manual de uso e aplicação](./MANUAL-DE-USO-E-APLICACAO.md) para
 instruções completas para pacientes, equipe, administração e publicação.
 

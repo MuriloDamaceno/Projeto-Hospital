@@ -269,6 +269,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
   .public-phone { display: none; }
   .public-nav { margin-left: auto; }
   .hospital-art-panel { min-height: 270px; padding: 30px; }
+  .sidebar .brand { padding: 0; }
+  .sidebar .brand img { width: 52px; }
 }
 @media (max-width: 560px) {
   .public-header { height: 70px; padding: 0 17px; }
