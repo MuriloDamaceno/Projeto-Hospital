@@ -19,7 +19,7 @@ function FeedbackFooter() {
 }
 
 export function SurveyFlow() {
-  const { slug = '', step = '1' } = useParams()
+  const { slug = '' } = useParams()
   const [searchParams] = useSearchParams()
   const [department, setDepartment] = useState<Department | null>(null)
   const [questions, setQuestions] = useState<SurveyQuestion[]>([])
@@ -30,7 +30,7 @@ export function SurveyFlow() {
   const [comment, setComment] = useState('')
   const navigate = useNavigate()
   const surveyId = searchParams.get('pesquisa') ?? ''
-  const currentStep = Number(step)
+  const currentStep = Number(searchParams.get('pergunta') ?? '1')
   const currentDepartment = department ?? fallbackDepartments.find((item) => item.slug === slug) ?? null
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export function SurveyFlow() {
       if (lastQuestion) {
         await finishSurvey()
       } else {
-        navigate(`/pesquisa/${slug}/pergunta/${currentStep + 1}${query}`)
+        navigate(`/pesquisa/${slug}?pergunta=${currentStep + 1}&pesquisa=${encodeURIComponent(surveyId)}`)
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível salvar sua resposta.')

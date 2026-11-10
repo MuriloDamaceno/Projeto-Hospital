@@ -3,7 +3,7 @@ import { ArrowDown, ArrowRight, Headset, ShieldCheck, Sparkles } from 'lucide-re
 import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
-import { getDepartments, createSurvey } from '../services/api'
+import { getDepartments } from '../services/api'
 import type { Department } from '../types'
 
 export function PublicHome() {
@@ -18,17 +18,10 @@ export function PublicHome() {
     })
   }, [])
 
-  async function begin(slug: string) {
+  function begin(slug: string) {
     setStarting(slug)
     setError('')
-    try {
-      const survey = await createSurvey(slug)
-      navigate(`/pesquisa/${slug}/pergunta/1?pesquisa=${encodeURIComponent(survey.id)}`)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível iniciar a pesquisa.')
-    } finally {
-      setStarting('')
-    }
+    navigate(`/pesquisa/${slug}`)
   }
 
   return (

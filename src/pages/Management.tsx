@@ -174,7 +174,10 @@ export function DashboardPage() {
   const answered = filtered.filter((survey) => survey.mean !== null)
   const average = answered.length ? answered.reduce((sum, survey) => sum + (survey.mean ?? 0), 0) / answered.length : 0
   const incomplete = filtered.filter((survey) => !survey.complete).length
-  const nps = getNps(filtered)
+  const nps = getNps(periodAndSectorSurveys.filter((survey) =>
+    (shift === 'todos' || survey.shift === shift)
+    && (!canFilterTeam || team === 'todos' || survey.teamName === team),
+  ))
   const since = new Date(now.getTime() - Number(period) * 24 * 60 * 60 * 1000)
   const previousSince = new Date(since.getTime() - Number(period) * 24 * 60 * 60 * 1000)
   const previousTotal = (data?.surveys ?? []).filter((survey) => {
