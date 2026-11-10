@@ -1,12 +1,5 @@
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); flex: 0 0 auto; }
-.brand-mark { width: 38px; height: 38px; display: grid; place-items: center; color: #fff; background: var(--green); border-radius: 12px; }
-.brand-copy { display: flex; flex-direction: column; line-height: 1.05; }
-.brand-copy strong { font-size: 19px; letter-spacing: -.8px; }
-.brand-copy strong span { color: var(--green); }
-.brand-copy small { color: #82908a; font-size: 9px; letter-spacing: .45px; text-transform: uppercase; margin-top: 4px; }
-.brand-light { color: #fff; }
-.brand-light .brand-mark { color: var(--green-deep); background: #d7eee3; }
-.brand-light .brand-copy small { color: #a4b7ae; }
+.brand img { display: block; width: 170px; height: auto; }
 .public-page { min-height: 100vh; background: var(--paper); overflow: hidden; }
 .public-header { max-width: 1180px; margin: auto; height: 80px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; }
 .public-nav { display: flex; align-items: center; gap: 34px; font-size: 13px; color: #66746d; }
@@ -60,7 +53,7 @@
 .sector-info { min-width: 0; flex: 1; }.sector-info strong,.sector-info small { display: block; }.sector-info strong { color: #283a31; font-size: 13px; }.sector-info small { margin-top: 4px; color: #89968e; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sector-arrow { width: 28px; height: 28px; border: 1px solid #edf1ed; border-radius: 8px; display: grid; place-items: center; color: #8b9b91; flex: 0 0 auto; }
 .section-footnote { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 22px; color: #89958e; font-size: 10px; }.section-footnote a { color: var(--green); font-weight: 650; text-decoration: none; }.tiny-lock { color: var(--green); display: inline-flex; }
-.public-footer { max-width: 1180px; margin: auto; min-height: 75px; padding: 15px 32px; border-top: 1px solid #e8ece8; display: flex; align-items: center; justify-content: space-between; color: #87938c; font-size: 10px; }.public-footer .brand-mark { width: 30px; height: 30px; border-radius: 9px; }.public-footer .brand-mark svg { width: 18px; }.public-footer .brand-copy strong { font-size: 16px; }.public-footer .brand-copy small { font-size: 7px; }
+.public-footer { max-width: 1180px; margin: auto; min-height: 75px; padding: 15px 32px; border-top: 1px solid #e8ece8; display: flex; align-items: center; justify-content: space-between; color: #87938c; font-size: 10px; }.public-footer .brand img { width: 135px; }
 
 /* Patient journey */
 .survey-page { min-height: 100vh; padding: 0 24px 24px; background: #f6f8f6; display: flex; flex-direction: column; align-items: center; }
@@ -178,15 +171,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
   .manifestation-detail-meta { grid-template-columns: 1fr; gap: 14px; }
 }
 
-.brand { gap: 8px; }
-.brand-mark { width: 43px; height: 43px; color: #e5323b; background: transparent; border-radius: 0; font-family: Arial, sans-serif; font-size: 51px; font-weight: 700; line-height: .8; }
-.brand-copy { line-height: 1.02; }
-.brand-copy strong { color: #e5323b; font-size: 25px; letter-spacing: -.6px; }
-.brand-copy strong span { color: #e5323b; }
-.brand-copy small { color: #59636e; font-size: 9px; letter-spacing: 0; text-transform: none; line-height: 1.2; margin-top: 2px; }
-.brand-light .brand-mark { color: #fff; background: transparent; }
-.brand-light .brand-copy strong,.brand-light .brand-copy strong span { color: #fff; }
-.brand-light .brand-copy small { color: #d3d8dc; }
+.brand img { width: 170px; }
 
 .public-page,.legal-page,.manual-page,.survey-page,.tv-wall { border-top: 4px solid #247a92; }
 .public-page { background: #fff; }
@@ -236,9 +221,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
 .section-footnote { color: #6f7983; }
 .section-footnote a,.tiny-lock { color: #c82531; }
 .public-footer { max-width: 1250px; border-top-color: #dfe2e5; color: #727c86; }
-.public-footer .brand-mark { width: 34px; height: 34px; font-size: 40px; }
-.public-footer .brand-copy strong { font-size: 18px; }
-.public-footer .brand-copy small { font-size: 8px; }
+.public-footer .brand img { width: 135px; }
 
 .survey-page { background: #f5f6f7; }
 .survey-header { border-bottom: 4px solid #e5323b; }
@@ -289,9 +272,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
 }
 @media (max-width: 560px) {
   .public-header { height: 70px; padding: 0 17px; }
-  .public-header .brand-mark { width: 34px; height: 34px; font-size: 41px; }
-  .public-header .brand-copy strong { font-size: 19px; }
-  .public-header .brand-copy small { font-size: 7px; }
+  .public-header .brand img { width: 140px; }
   .public-nav { gap: 9px; }
   .public-nav > a:first-child,.public-nav > a:nth-child(2),.public-nav > a:nth-child(3) { display: none; }
   .public-nav > a + a { border-left: 0; padding-left: 0; }
