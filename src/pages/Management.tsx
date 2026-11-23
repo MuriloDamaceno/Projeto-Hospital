@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowDownToLine, ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, ClipboardList, ExternalLink, Filter, ListChecks, Plus, RefreshCw, Search, ShieldCheck, Smile, UsersRound } from 'lucide-react'
+import { ArrowDownRight, ArrowDownToLine, ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, ClipboardList, Copy, Download, ExternalLink, Filter, ListChecks, Plus, RefreshCw, Search, ShieldCheck, Smile, UsersRound } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
@@ -469,6 +469,36 @@ export function AdministrationPage() {
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
 
+  function surveyUrl(slug: string) {
+    return new URL(`/pesquisa/${encodeURIComponent(slug)}`, window.location.origin).toString()
+  }
+
+  async function copyQrLink(slug: string) {
+    try {
+      await navigator.clipboard.writeText(surveyUrl(slug))
+      setNotice('Link do QR Code copiado.')
+    } catch {
+      setError('Não foi possível copiar o link. Use o botão de abrir pesquisa.')
+    }
+  }
+
+  function downloadQr(slug: string) {
+    const qrElement = document.querySelector(`[data-qr-slug="${slug}"] svg`)
+    if (!(qrElement instanceof SVGElement)) {
+      setError('Não foi possível localizar o QR Code para baixar.')
+      return
+    }
+
+    const serialized = new XMLSerializer().serializeToString(qrElement)
+    const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `qr-code-${slug}.svg`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function refresh() {
     try {
       setDepartments(await getDepartments())
@@ -508,7 +538,22 @@ export function AdministrationPage() {
       {notice && <div className="alert alert-success" role="status">{notice}</div>}
       <div className="settings-layout">
         <section className="panel settings-panel"><div className="panel-heading"><div><h2>Setores da pesquisa</h2><p>Cada setor possui uma página e um link próprios.</p></div><span className="settings-count">{departments.filter((item) => item.active).length} ativos</span></div>
-          <div className="settings-sector-list">{departments.map((department) => <article key={department.id} className="settings-sector"><span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span><span className="sector-info"><strong>{department.name}</strong><small>/pesquisa/{department.slug}</small></span><span className={`status-pill ${department.active ? 'status-complete' : 'status-partial'}`}>{department.active ? 'Ativo' : 'Inativo'}</span><a href={`/pesquisa/${department.slug}`} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a><div className="qr-popover"><QRCodeSVG value={`${window.location.origin}/pesquisa/${department.slug}`} size={48} level="M" /><span>QR Code</span></div></article>)}</div>
+          <div className="settings-sector-list">{departments.map((department) => {
+            const url = surveyUrl(department.slug)
+            return (
+              <article key={department.id} className="settings-sector">
+                <span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span>
+                <span className="sector-info"><strong>{department.name}</strong><small>{url}</small></span>
+                <span className={`status-pill ${department.active ? 'status-complete' : 'status-partial'}`}>{department.active ? 'Ativo' : 'Inativo'}</span>
+                <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
+                <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
+                <div className="qr-popover" data-qr-slug={department.slug}>
+                  <QRCodeSVG value={url} size={48} level="M" />
+                  <button type="button" className="qr-download" onClick={() => downloadQr(department.slug)} title="Baixar QR Code"><Download size={12} /> Baixar</button>
+                </div>
+              </article>
+            )
+          })}</div>
           <form className="add-sector-form" onSubmit={addSector}><div className="form-section-title"><Plus size={17} /><strong>Adicionar setor</strong></div><div className="add-sector-fields"><label className="form-field"><span>Nome do setor</span><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={70} placeholder="Ex.: Laboratório" /></label><label className="form-field"><span>Descrição</span><input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={100} placeholder="Ex.: Coleta e realização de exames" /></label><button className="button button-primary" disabled={saving}>{saving ? 'Salvando…' : 'Adicionar'} <ArrowUpRight size={16} /></button></div></form>
         </section>
         <aside className="settings-side"><article className="panel roles-panel"><div className="panel-heading"><div><h2>Perfis de acesso</h2><p>Permissões para cada função</p></div><UsersRound size={18} /></div>{[['Administrador', 'Acesso total: setores, perguntas gerais, perguntas de qualquer setor e Ouvidoria'], ['Gestão', 'Acompanha indicadores e gerencia perguntas somente do setor associado à conta'], ['Ouvidoria', 'Acessa e trata manifestações da Ouvidoria']].map(([role, details]) => <div className="role-row" key={role}><span className="role-dot" /><span><strong>{role}</strong><small>{details}</small></span></div>)}</article><article className="settings-callout"><span className="callout-lock"><ShieldCheck size={19} /></span><strong>Privacidade em primeiro lugar</strong><p>O acesso a manifestações e dados pessoais depende do perfil e deve ser validado na API.</p><Link to="/privacidade">Ver política de privacidade <ArrowUpRight size={14} /></Link></article></aside>
