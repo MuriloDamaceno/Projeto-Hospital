@@ -118,7 +118,7 @@ No modo de demonstração, a tela `/gestao/login` permite selecionar os três pe
 1. Envie o repositório ao GitHub e crie um **Static Site** no Render apontando para a pasta do front.
 2. Configure **Build Command** `npm install && npm run build` e **Publish Directory** `dist`.
 3. O arquivo `.env.production` já aponta `VITE_API_URL` para `https://projfund-hosposwaldodiesel-back.onrender.com`. Se preferir configurar no painel do Render, use esse mesmo valor na variável de ambiente do Static Site. O Vite incorpora essa variável durante o build: após alterá-la, faça um novo deploy do front.
-4. No painel do Static Site, adicione uma regra de rewrite `/*` → `/index.html` com status `200` para as rotas do React Router. Sem ela, abrir diretamente `/pesquisa/<setor>` ou atualizar uma etapa pode retornar `Not Found`, mesmo que a navegação dentro do site funcione.
+4. Configure no painel do Static Site uma regra de rewrite `/*` → `/index.html` com status `200` para as rotas do React Router. O projeto também inclui `public/_redirects` e `render.yaml` como configurações de fallback para o deploy. Sem essa configuração, abrir diretamente `/pesquisa/<setor>` ou atualizar uma etapa pode retornar `Not Found`, mesmo que a navegação dentro do site funcione.
 5. No serviço do back-end no Render, configure `CORS_ORIGIN` como `https://projeto-hospital-pqxh.onrender.com` (origem do front, sem barra final). Não use a URL do back-end nesse campo.
 6. Abra e teste as rotas públicas, a tela de login, o dashboard e `/tv-wall` no link publicado.
 
