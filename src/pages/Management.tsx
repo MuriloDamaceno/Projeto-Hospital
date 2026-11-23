@@ -470,7 +470,7 @@ export function AdministrationPage() {
   const [saving, setSaving] = useState(false)
 
   function surveyUrl(slug: string) {
-    return new URL(`/pesquisa/${encodeURIComponent(slug)}`, window.location.origin).toString()
+    return new URL(`/#/pesquisa/${encodeURIComponent(slug)}`, window.location.origin).toString()
   }
 
   async function copyQrLink(slug: string) {

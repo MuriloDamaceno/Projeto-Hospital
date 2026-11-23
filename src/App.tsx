@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ProtectedLayout } from './components/ManagementLayout'
 import { AdministrationPage, DashboardPage, LoginPage, ManifestationDetailPage, OmbudsmanManagementPage, QuestionsManagementPage, TVWallPage } from './pages/Management'
 import { OmbudsmanForm, SurveyFlow, SurveyThanks } from './pages/SurveyFlow'
@@ -109,5 +109,5 @@ function RouterView() {
 }
 
 export default function App() {
-  return <BrowserRouter><RouterView /></BrowserRouter>
+  return <HashRouter><RouterView /></HashRouter>
 }
