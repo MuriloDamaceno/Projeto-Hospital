@@ -3,6 +3,8 @@ import { ArrowDown, ArrowRight, Headset, ShieldCheck, Sparkles } from 'lucide-re
 import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
+import { HospitalFooter } from '../components/HospitalFooter'
+import { InstitutionPageBanner } from '../components/InstitutionPageBanner'
 import { getDepartments } from '../services/api'
 import { clearSurveyProgress } from '../services/surveyProgress'
 import type { Department } from '../types'
@@ -79,7 +81,7 @@ export function PublicHome() {
         </div>
         <div className="section-footnote"><span className="tiny-lock"><ShieldCheck size={16} /></span> Não pedimos seus dados pessoais para avaliar o atendimento. <Link to="/privacidade">Saiba mais</Link></div>
       </section>
-      <footer className="public-footer"><Brand /><span>Um cuidado melhor começa com uma conversa.</span><Link to="/tv-wall">Painel público</Link></footer>
+      <HospitalFooter />
     </main>
   )
 }
@@ -88,9 +90,8 @@ export function PrivacyPage() {
   return (
     <main className="legal-page">
       <header className="public-header"><Brand /><Link className="staff-link" to="/">Voltar ao início <ArrowRight size={15} /></Link></header>
+      <InstitutionPageBanner kicker="TRANSPARÊNCIA E CUIDADO" title="Privacidade dos seus dados" subtitle="Como tratamos as informações compartilhadas neste canal." />
       <article className="legal-card">
-        <span className="eyebrow">TRANSPARÊNCIA E CUIDADO</span>
-        <h1>Privacidade dos seus dados</h1>
         <p>Esta pesquisa coleta avaliações para ajudar a melhorar os serviços do hospital. Você pode enviar uma manifestação sem se identificar.</p>
         <h2>O que registramos</h2><p>As respostas podem ser relacionadas ao setor, à data e ao turno do atendimento. Não vinculamos avaliações a profissionais individualmente.</p>
         <h2>Seus dados e seu consentimento</h2><p>Seu telefone só é solicitado se você optar por receber contato da Ouvidoria e autorizar esse uso. O acesso às informações de contato é restrito às equipes autorizadas.</p>
@@ -98,6 +99,7 @@ export function PrivacyPage() {
         <p className="legal-note">Esta página é um modelo inicial para o projeto. A política definitiva e os prazos de retenção devem ser validados com o hospital e com o responsável pela proteção de dados.</p>
         <Link className="button button-primary" to="/">Entendi <ArrowRight size={16} /></Link>
       </article>
+      <HospitalFooter />
     </main>
   )
 }

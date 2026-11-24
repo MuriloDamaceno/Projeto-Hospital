@@ -375,3 +375,132 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
 @media (max-width: 560px) {
   .management-mobilebar .brand img { width: 132px; }
 }
+
+/* Shared visual language from the hospital website */
+.public-page,.legal-page,.manual-page,.survey-page,.tv-wall { border-top: 0; }
+.brand img { width: 150px; }
+.public-header { height: 76px; }
+.sector-grid { gap: 12px; background: transparent; }
+.sector-card {
+  min-height: 88px;
+  border: 1px solid #dfe2e5;
+  border-left: 3px solid #e5323b;
+  border-radius: 2px;
+  color: #414b56;
+  background: #fff;
+}
+.sector-card:hover:not(:disabled) { border-color: #e5323b; background: #fff; box-shadow: 0 5px 16px #30394412; }
+.sector-card .sector-icon { border: 0; border-radius: 2px; color: #c82531; background: #fff0f1; }
+.sector-info strong { color: #414b56; }
+.sector-info small { color: #66717c; }
+.sector-arrow { border-color: #dfe2e5; border-radius: 2px; color: #c82531; }
+
+.institution-page-banner {
+  position: relative;
+  min-height: 122px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #fff;
+  background: #5d6772;
+  text-align: center;
+}
+.institution-page-banner::before,.institution-page-banner::after {
+  content: '';
+  position: absolute;
+  top: -55px;
+  width: 150px;
+  height: 220px;
+  border: 1px solid #ffffff24;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.institution-page-banner::before { left: -60px; }
+.institution-page-banner::after { right: -60px; }
+.institution-page-banner > span { color: #ffd2d4; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }
+.institution-page-banner h1 { margin: 6px 0 3px; color: #fff; font-size: clamp(24px, 3vw, 34px); line-height: 1.15; }
+.institution-page-banner p { margin: 0; color: #f0f2f4; font-size: 11px; line-height: 1.5; }
+
+.legal-card {
+  max-width: 1080px;
+  margin: 34px auto 50px;
+  padding: 0 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.legal-card h2 { margin-top: 24px; color: #414b56; font-size: 18px; }
+.legal-card p { color: #4c5661; font-size: 14px; line-height: 1.75; }
+.legal-card .legal-note { padding: 14px 16px; border-left: 3px solid #e5323b; border-radius: 0; background: #f1f3f5; font-size: 12px; }
+.manual-content { width: min(100% - 48px, 1120px); margin: 34px auto 48px; }
+.manual-content > h1 { display: none; }
+.manual-intro { margin-bottom: 25px; color: #5d6772; font-size: 14px; }
+.manual-card { border-radius: 2px; border-color: #dfe2e5; }
+.manual-card h2 { color: #414b56; font-size: 16px; }
+.manual-card ol { color: #4c5661; font-size: 12px; }
+.manual-icon { border-radius: 2px; }
+.manual-bottom { border-radius: 2px; }
+.manual-bottom p { font-size: 12px; line-height: 1.6; }
+.ombudsman-card { margin-top: 30px; border-radius: 2px; }
+.survey-page { padding: 0 0 24px; }
+.survey-header { padding: 0 24px; }
+.survey-shell { width: min(calc(100% - 48px), 600px); }
+.ombudsman-card { width: min(calc(100% - 48px), 570px); }
+.survey-page > .institution-page-banner { width: 100%; margin-left: 0; }
+.survey-page > .hospital-footer { align-self: stretch; width: 100%; margin: 28px 0 -24px; }
+.survey-page > .survey-result-card { width: min(calc(100% - 48px), 540px); }
+.survey-card,.survey-result-card { border-radius: 2px; }
+.survey-result-card { margin-top: auto; margin-bottom: auto; }
+.survey-privacy { font-size: 11px; }
+.survey-card h1,.ombudsman-card h1,.survey-result-card h1 { font-size: 28px; }
+.management-app .panel,.management-app .metric-card,.management-app .settings-callout,.management-app .settings-sector,.management-app .inbox-item,.management-app .question-config-note,.management-app .manifestation-detail { border-radius: 3px; }
+.login-panel { border-radius: 3px; box-shadow: none; }
+.login-art-icon { border-radius: 3px; }
+.login-page > header { border-bottom: 4px solid #e5323b; }
+
+.hospital-footer { width: 100%; background: #fff; }
+.hospital-footer-links {
+  width: min(100%, 1250px);
+  min-height: 160px;
+  margin: 0 auto;
+  padding: 25px 32px;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.2fr 1fr;
+  align-items: center;
+  gap: 28px;
+  border-top: 1px solid #e5323b;
+}
+.hospital-footer-brand .brand img { width: 135px; }
+.hospital-footer-brand p { margin: 8px 0 0; color: #68727d; font-size: 11px; }
+.hospital-footer-links nav,.hospital-footer-social { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.hospital-footer-links nav strong,.hospital-footer-social > strong { margin-bottom: 2px; color: #414b56; font-size: 12px; }
+.hospital-footer-links nav a { color: #5d6772; font-size: 11px; text-decoration: none; }
+.hospital-footer-links nav a::before { content: '›'; margin-right: 6px; color: #e5323b; font-weight: 700; }
+.hospital-footer-links nav a:hover { color: #c82531; }
+.hospital-footer-social > div { display: flex; gap: 9px; margin-top: 5px; }
+.hospital-footer-social a { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #dfe2e5; border-radius: 50%; color: #5d6772; text-decoration: none; }
+.hospital-footer-social a:hover { border-color: #e5323b; color: #c82531; }
+.hospital-footer-social a span { font-size: 21px; line-height: 1; }
+.hospital-contact-band { min-height: 142px; padding: 20px 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; background: #e5323b; }
+.hospital-contact-band a { min-height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: #fff; text-align: center; text-decoration: none; }
+.hospital-contact-band a + a { border-left: 1px solid #ffffff45; }
+.hospital-contact-band strong { font-size: 12px; }
+.hospital-contact-band span { font-size: 11px; line-height: 1.5; }
+.hospital-copyright { min-height: 38px; padding: 11px 20px; color: #fff; background: #5d6772; text-align: center; font-size: 10px; }
+
+@media (max-width: 760px) {
+  .hospital-footer-links { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px 18px; }
+  .institution-page-banner::before { left: -100px; }
+  .institution-page-banner::after { right: -100px; }
+}
+@media (max-width: 500px) {
+  .hospital-footer-links { grid-template-columns: 1fr 1fr; padding: 24px 20px; gap: 22px 14px; }
+  .hospital-contact-band { grid-template-columns: 1fr; padding: 10px 24px; }
+  .hospital-contact-band a { min-height: 90px; }
+  .hospital-contact-band a + a { border-top: 1px solid #ffffff45; border-left: 0; }
+  .legal-card { padding: 0 22px; }
+  .manual-content { width: calc(100% - 32px); }
+}

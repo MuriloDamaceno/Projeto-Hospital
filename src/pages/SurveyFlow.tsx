@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Check, Heart, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
+import { HospitalFooter } from '../components/HospitalFooter'
+import { InstitutionPageBanner } from '../components/InstitutionPageBanner'
 import { completeSurvey, createManifestation, getDepartments, getQuestions, saveSurveyAnswer } from '../services/api'
 import { clearSurveyProgress, readSurveyProgress } from '../services/surveyProgress'
 import { departments as fallbackDepartments } from '../data/demo'
@@ -118,6 +120,7 @@ export function SurveyFlow({ slug, surveyId, currentStep, onStepChange }: {
         </section>
         <FeedbackFooter />
       </div>
+      <HospitalFooter />
     </main>
   )
 }
@@ -140,6 +143,7 @@ function SurveyMessage({ title, text, icon = 'check', surveyId }: { title: strin
         <Link to="/" className="button button-primary">Voltar ao início <ArrowRight size={16} /></Link>
       </section>
       <FeedbackFooter />
+      <HospitalFooter />
     </main>
   )
 }
@@ -196,10 +200,9 @@ export function OmbudsmanForm() {
   return (
     <main className="survey-page">
       <header className="survey-header"><Brand /><Link className="survey-exit" to="/">Sair</Link></header>
+      <InstitutionPageBanner kicker="OUVIDORIA" title="Quer falar com a gente?" subtitle="Registre um elogio, reclamação ou sugestão. Você pode fazer isso anonimamente." />
       <section className="ombudsman-card">
-        <span className="survey-kicker">OUVIDORIA · SUA VOZ É IMPORTANTE</span>
-        <h1>Quer falar com a gente?</h1>
-        <p className="survey-subtitle">Registre um elogio, reclamação ou sugestão. Você pode fazer isso anonimamente.</p>
+        <p className="survey-subtitle">Sua manifestação ajuda a melhorar o atendimento do hospital.</p>
         {error && <div className="alert alert-error" role="alert">{error}</div>}
         <form onSubmit={submit}>
           <label className="form-field"><span>Esta mensagem é um…</span><select value={type} onChange={(event) => setType(event.target.value as ManifestationType)}><option>Elogio</option><option>Reclamação</option><option>Sugestão</option></select></label>
@@ -212,6 +215,7 @@ export function OmbudsmanForm() {
         <p className="ombudsman-note"><ShieldCheck size={15} /> Não prometemos retorno automático. Se quiser acompanhar, entre em contato diretamente com a Ouvidoria.</p>
       </section>
       <FeedbackFooter />
+      <HospitalFooter />
     </main>
   )
 }

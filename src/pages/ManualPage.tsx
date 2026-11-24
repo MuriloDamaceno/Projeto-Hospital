@@ -1,6 +1,8 @@
-import { ArrowLeft, ArrowRight, BarChart3, ClipboardList, Monitor, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BarChart3, ClipboardList, Monitor } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
+import { HospitalFooter } from '../components/HospitalFooter'
+import { InstitutionPageBanner } from '../components/InstitutionPageBanner'
 
 const manualSections = [
   {
@@ -49,10 +51,8 @@ export function ManualPage() {
   return (
     <main className="manual-page">
       <header className="public-header"><Brand /><Link className="staff-link" to="/">Voltar ao início <ArrowLeft size={15} /></Link></header>
+      <InstitutionPageBanner kicker="GUIA RÁPIDO" title="Como usar o cuidado+" subtitle="Orientações para pacientes, Gestão, Ouvidoria e equipe do painel público." />
       <div className="manual-content">
-        <span className="eyebrow"><ShieldCheck size={14} /> GUIA RÁPIDO</span>
-        <h1>Como usar o cuidado+</h1>
-        <p className="manual-intro">Um guia simples para pacientes, Gestão, Ouvidoria e equipe do TV Wall.</p>
         <div className="manual-cards">{manualSections.map(({ number, icon: Icon, title, steps }) => (
           <article className="manual-card" key={number}>
             <div className="manual-card-heading"><span className="manual-icon"><Icon size={20} /></span><span className="manual-number">{number}</span></div>
@@ -62,6 +62,7 @@ export function ManualPage() {
         ))}</div>
         <div className="manual-bottom"><span>Ficou com dúvida?</span><p>Peça ajuda à equipe do hospital. O acesso a dados pessoais e as permissões de cada perfil são controlados pela API.</p><Link className="button button-primary" to="/">Ir para o início <ArrowRight size={16} /></Link></div>
       </div>
+      <HospitalFooter />
     </main>
   )
 }
