@@ -626,7 +626,7 @@ export function AdministrationPage() {
                 <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
                 <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
                 <div className="qr-popover" data-qr-slug={department.slug}>
-                  <QRCodeSVG value={url} size={48} level="M" />
+                  <QRCodeSVG value={url} size={64} level="M" />
                   <button type="button" className="qr-download" onClick={() => downloadQr(department.slug)} title="Baixar QR Code"><Download size={12} /> Baixar</button>
                 </div>
               </article>
