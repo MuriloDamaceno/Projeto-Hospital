@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { getUserSectorSlugs } from '../services/access'
-import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, logout, updateManifestationStatus, updateQuestion } from '../services/api'
+import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, updateManifestationStatus, updateQuestion } from '../services/api'
 import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
@@ -704,7 +704,7 @@ export function AdministrationPage() {
 }
 
 export function TVWallPage() {
-  const { data, departments, error, loading, refresh, lastUpdated } = useTVWall()
+  const { data, departments, error, loading, lastUpdated } = useTVWall()
   const average = data?.satisfactionAverage ?? 0
   const nps = data?.nps ?? null
   const publicSectors = (data?.sectors ?? []).flatMap((sector) => {
@@ -713,13 +713,8 @@ export function TVWallPage() {
   }).sort((a, b) => b.average - a.average)
   const compliments = data?.complimentCount ?? 0
 
-  function toggleFullscreen() {
-    if (document.fullscreenElement) void document.exitFullscreen()
-    else void document.documentElement.requestFullscreen()
-  }
-
   return <main className="tv-wall">
-    <header className="tv-header"><Brand light /><div className="tv-live"><span className="live-dot" /> PAINEL DE INDICADORES · ACESSO ADMINISTRATIVO</div><div className="tv-time">{lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '--:--'}<button onClick={toggleFullscreen} title="Tela cheia"><ExternalLink size={18} /></button><button onClick={() => void refresh()} title="Atualizar painel"><RefreshCw size={18} /></button><Link to="/" title="Sair e voltar ao início" onClick={() => logout()}><ArrowUpRight size={18} /></Link></div></header>
+    <header className="tv-header"><Brand light /><div className="tv-live"><span className="live-dot" /> PAINEL DE INDICADORES · ACESSO ADMINISTRATIVO</div><div className="tv-time">{lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '--:--'}</div></header>
     {error && <div className="alert alert-error" role="alert">{error}</div>}
     {loading && !data ? <div className="loading-panel"><span className="spinner" /> Carregando painel…</div> : <div className="tv-content"><div className="tv-intro"><span className="eyebrow">CUIDADO QUE SE TRANSFORMA</span><h1>Juntos, fazemos melhor.</h1><p>Ouvimos cada pessoa para tornar a experiência de cuidado cada vez mais acolhedora.</p></div>
       <section className="tv-metrics"><article><span className="tv-metric-icon">☺</span><span className="tv-metric-number">{average ? `${average.toFixed(1).replace('.', ',')}` : '—'}<small>/5</small></span><span className="tv-metric-caption">satisfação média</span></article><article><span className="tv-metric-icon">♡</span><span className="tv-metric-number">{nps === null ? '—' : nps}<small>{nps === null ? '' : ' pts'}</small></span><span className="tv-metric-caption">NPS de recomendação</span></article><article><span className="tv-metric-icon">✦</span><span className="tv-metric-number">{data?.responseCount === null ? '—' : (data?.responseCount ?? 0).toLocaleString('pt-BR')}</span><span className="tv-metric-caption">experiências compartilhadas</span></article><article><span className="tv-metric-icon">♥</span><span className="tv-metric-number">{compliments.toLocaleString('pt-BR')}</span><span className="tv-metric-caption">elogios recebidos</span></article></section>
