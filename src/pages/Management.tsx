@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowDownToLine, ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, ClipboardList, Copy, Download, ExternalLink, Filter, ListChecks, Plus, RefreshCw, Search, ShieldCheck, Smile, UsersRound } from 'lucide-react'
+import { ArrowDownRight, ArrowDownToLine, ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, ClipboardList, Copy, Download, ExternalLink, Filter, ListChecks, Plus, RefreshCw, Search, ShieldCheck, Smile, UserPlus, UsersRound, X } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
-import { createDepartment, createQuestion, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, updateManifestationStatus, updateQuestion } from '../services/api'
-import type { AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
+import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, updateManifestationStatus, updateQuestion } from '../services/api'
+import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
   return total ? Math.round((value / total) * 100) : 0
@@ -463,11 +463,74 @@ export function QuestionsManagementPage() {
 
 export function AdministrationPage() {
   const [departments, setDepartments] = useState<Department[]>([])
+  const [accountDepartment, setAccountDepartment] = useState<Department | null>(null)
+  const [assignableProfiles, setAssignableProfiles] = useState<AssignableProfile[]>([])
+  const [accountName, setAccountName] = useState('')
+  const [accountEmail, setAccountEmail] = useState('')
+  const [accountPassword, setAccountPassword] = useState('')
+  const [accountProfileId, setAccountProfileId] = useState('')
+  const [accountError, setAccountError] = useState('')
+  const [loadingProfiles, setLoadingProfiles] = useState(false)
+  const [creatingAccount, setCreatingAccount] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const canCreateAccounts = getCurrentUser()?.role === 'Administrador'
+
+  async function openAccountForm(department: Department) {
+    setAccountDepartment(department)
+    setAccountName('')
+    setAccountEmail('')
+    setAccountPassword('')
+    setAccountError('')
+    setNotice('')
+    if (assignableProfiles.length) {
+      setAccountProfileId(String(assignableProfiles[0].id))
+      return
+    }
+
+    setLoadingProfiles(true)
+    try {
+      const profiles = await getAssignableProfiles()
+      setAssignableProfiles(profiles)
+      setAccountProfileId(String(profiles[0]?.id ?? ''))
+      if (!profiles.length) setAccountError('A API não retornou perfis que possam ser atribuídos.')
+    } catch (cause) {
+      setAccountError(cause instanceof Error ? cause.message : 'Não foi possível carregar os perfis disponíveis.')
+    } finally {
+      setLoadingProfiles(false)
+    }
+  }
+
+  async function submitAccount(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!accountDepartment || !accountProfileId) return
+
+    setCreatingAccount(true)
+    setAccountError('')
+    setNotice('')
+    try {
+      await createAdminAccount({
+        name: accountName.trim(),
+        email: accountEmail.trim(),
+        password: accountPassword,
+        profileId: Number(accountProfileId),
+        sectorId: Number(accountDepartment.id),
+      })
+      setNotice(`Acesso criado para ${accountName.trim()} no setor ${accountDepartment.name}.`)
+      setAccountDepartment(null)
+      setAccountName('')
+      setAccountEmail('')
+      setAccountPassword('')
+      setAccountProfileId('')
+    } catch (cause) {
+      setAccountError(cause instanceof Error ? cause.message : 'Não foi possível criar o acesso.')
+    } finally {
+      setCreatingAccount(false)
+    }
+  }
 
   function surveyUrl(slug: string) {
     return new URL(`/#/pesquisa/${encodeURIComponent(slug)}`, window.location.origin).toString()
@@ -545,6 +608,7 @@ export function AdministrationPage() {
                 <span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span>
                 <span className="sector-info"><strong>{department.name}</strong><small>{url}</small></span>
                 <span className={`status-pill ${department.active ? 'status-complete' : 'status-partial'}`}>{department.active ? 'Ativo' : 'Inativo'}</span>
+                {canCreateAccounts && <button type="button" className="button button-outline account-create-trigger" onClick={() => void openAccountForm(department)} title={`Criar acesso para ${department.name}`} aria-label={`Criar acesso para ${department.name}`}><UserPlus size={14} /><span>Criar acesso</span></button>}
                 <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
                 <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
                 <div className="qr-popover" data-qr-slug={department.slug}>
@@ -554,6 +618,20 @@ export function AdministrationPage() {
               </article>
             )
           })}</div>
+          {accountDepartment && <form className="account-create-form" onSubmit={(event) => void submitAccount(event)}>
+            <div className="account-create-heading">
+              <div className="form-section-title"><UserPlus size={17} /><strong>Criar acesso · {accountDepartment.name}</strong></div>
+              <button type="button" className="icon-button" onClick={() => setAccountDepartment(null)} aria-label="Fechar cadastro de acesso"><X size={15} /></button>
+            </div>
+            {accountError && <div className="alert alert-error" role="alert">{accountError}</div>}
+            {loadingProfiles ? <div className="loading-panel"><span className="spinner" /> Carregando perfis…</div> : assignableProfiles.length > 0 && <div className="account-create-fields">
+              <label className="form-field"><span>Nome completo</span><input value={accountName} onChange={(event) => setAccountName(event.target.value)} required maxLength={120} autoComplete="name" /></label>
+              <label className="form-field"><span>E-mail</span><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} required maxLength={255} autoComplete="email" /></label>
+              <label className="form-field"><span>Senha inicial</span><input type="password" value={accountPassword} onChange={(event) => setAccountPassword(event.target.value)} required minLength={8} maxLength={72} autoComplete="new-password" /></label>
+              <label className="form-field"><span>Perfil</span><select value={accountProfileId} onChange={(event) => setAccountProfileId(event.target.value)} required><option value="" disabled>Selecione um perfil</option>{assignableProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
+              <button className="button button-primary" type="submit" disabled={creatingAccount || loadingProfiles}>{creatingAccount ? 'Criando…' : 'Criar acesso'} <UserPlus size={15} /></button>
+            </div>}
+          </form>}
           <form className="add-sector-form" onSubmit={addSector}><div className="form-section-title"><Plus size={17} /><strong>Adicionar setor</strong></div><div className="add-sector-fields"><label className="form-field"><span>Nome do setor</span><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={70} placeholder="Ex.: Laboratório" /></label><label className="form-field"><span>Descrição</span><input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={100} placeholder="Ex.: Coleta e realização de exames" /></label><button className="button button-primary" disabled={saving}>{saving ? 'Salvando…' : 'Adicionar'} <ArrowUpRight size={16} /></button></div></form>
         </section>
         <aside className="settings-side"><article className="panel roles-panel"><div className="panel-heading"><div><h2>Perfis de acesso</h2><p>Permissões para cada função</p></div><UsersRound size={18} /></div>{[['Administrador', 'Acesso total: setores, perguntas gerais, perguntas de qualquer setor e Ouvidoria'], ['Gestão', 'Acompanha indicadores e gerencia perguntas somente do setor associado à conta'], ['Ouvidoria', 'Acessa e trata manifestações da Ouvidoria']].map(([role, details]) => <div className="role-row" key={role}><span className="role-dot" /><span><strong>{role}</strong><small>{details}</small></span></div>)}</article><article className="settings-callout"><span className="callout-lock"><ShieldCheck size={19} /></span><strong>Privacidade em primeiro lugar</strong><p>O acesso a manifestações e dados pessoais depende do perfil e deve ser validado na API.</p><Link to="/privacidade">Ver política de privacidade <ArrowUpRight size={14} /></Link></article></aside>

@@ -1,5 +1,5 @@
 import { createDemoManifestations, createDemoSurveys, departments as demoDepartments, demoQuestions, getShift } from '../data/demo'
-import type { AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
+import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
 const DEMO_SURVEYS_KEY = 'sgep:surveys'
@@ -574,6 +574,34 @@ export async function createDepartment(input: Pick<Department, 'name' | 'slug' |
   }
   saveDemo(DEMO_DEPARTMENTS_KEY, [...departments, department])
   return department
+}
+
+export async function getAssignableProfiles(): Promise<AssignableProfile[]> {
+  const profiles = await backendRequest<Array<{ id: number; nome: string; perfil: string }>>('/api/admin/perfis')
+  return profiles.map((profile) => ({
+    id: profile.id,
+    name: profile.nome,
+    permission: profile.perfil,
+  }))
+}
+
+export async function createAdminAccount(input: {
+  name: string
+  email: string
+  password: string
+  profileId: number
+  sectorId: number
+}): Promise<void> {
+  await backendRequest('/api/admin/usuarios', {
+    method: 'POST',
+    body: JSON.stringify({
+      nome: input.name,
+      email: input.email,
+      senha: input.password,
+      perfil_id: input.profileId,
+      setor_id: input.sectorId,
+    }),
+  })
 }
 
 export async function login(email: string, password: string, role: AuthUser['role'] = 'Gestão', sectorSlug?: string): Promise<AuthUser> {

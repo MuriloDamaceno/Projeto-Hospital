@@ -82,3 +82,9 @@ export interface AuthUser {
   role: 'Ouvidoria' | 'Gestão' | 'Administrador' | 'Visualizador'
   sectorSlug?: string
 }
+
+export interface AssignableProfile {
+  id: number
+  name: string
+  permission: string
+}
