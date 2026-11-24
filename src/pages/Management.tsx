@@ -463,27 +463,31 @@ export function QuestionsManagementPage() {
 
 export function AdministrationPage() {
   const [departments, setDepartments] = useState<Department[]>([])
-  const [accountDepartment, setAccountDepartment] = useState<Department | null>(null)
   const [assignableProfiles, setAssignableProfiles] = useState<AssignableProfile[]>([])
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
   const [accountPassword, setAccountPassword] = useState('')
   const [accountProfileId, setAccountProfileId] = useState('')
+  const [accountSectorId, setAccountSectorId] = useState('')
   const [accountError, setAccountError] = useState('')
   const [loadingProfiles, setLoadingProfiles] = useState(false)
   const [creatingAccount, setCreatingAccount] = useState(false)
+  const [showAccountForm, setShowAccountForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const canCreateAccounts = getCurrentUser()?.role === 'Administrador'
+  const selectedAccountProfile = assignableProfiles.find((item) => String(item.id) === accountProfileId)
+  const accountRequiresSector = selectedAccountProfile ? ['admin_setor', 'gestao'].includes(selectedAccountProfile.permission) : false
 
-  async function openAccountForm(department: Department) {
-    setAccountDepartment(department)
+  async function openAccountForm() {
+    setShowAccountForm(true)
     setAccountName('')
     setAccountEmail('')
     setAccountPassword('')
+    setAccountSectorId('')
     setAccountError('')
     setNotice('')
     if (assignableProfiles.length) {
@@ -506,7 +510,16 @@ export function AdministrationPage() {
 
   async function submitAccount(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!accountDepartment || !accountProfileId) return
+    const profile = assignableProfiles.find((item) => String(item.id) === accountProfileId)
+    if (!profile) {
+      setAccountError('Selecione um perfil disponível.')
+      return
+    }
+    const requiresSector = ['admin_setor', 'gestao'].includes(profile.permission)
+    if (requiresSector && !accountSectorId) {
+      setAccountError('Selecione o setor associado a este perfil.')
+      return
+    }
 
     setCreatingAccount(true)
     setAccountError('')
@@ -517,14 +530,16 @@ export function AdministrationPage() {
         email: accountEmail.trim(),
         password: accountPassword,
         profileId: Number(accountProfileId),
-        sectorId: Number(accountDepartment.id),
+        sectorId: accountSectorId ? Number(accountSectorId) : null,
       })
-      setNotice(`Acesso criado para ${accountName.trim()} no setor ${accountDepartment.name}.`)
-      setAccountDepartment(null)
+      const department = departments.find((item) => item.id === accountSectorId)
+      setNotice(`Acesso criado para ${accountName.trim()} com perfil ${profile.name}${department ? ` no setor ${department.name}` : ''}.`)
+      setShowAccountForm(false)
       setAccountName('')
       setAccountEmail('')
       setAccountPassword('')
       setAccountProfileId('')
+      setAccountSectorId('')
     } catch (cause) {
       setAccountError(cause instanceof Error ? cause.message : 'Não foi possível criar o acesso.')
     } finally {
@@ -608,7 +623,6 @@ export function AdministrationPage() {
                 <span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span>
                 <span className="sector-info"><strong>{department.name}</strong><small>{url}</small></span>
                 <span className={`status-pill ${department.active ? 'status-complete' : 'status-partial'}`}>{department.active ? 'Ativo' : 'Inativo'}</span>
-                {canCreateAccounts && <button type="button" className="button button-outline account-create-trigger" onClick={() => void openAccountForm(department)} title={`Criar acesso para ${department.name}`} aria-label={`Criar acesso para ${department.name}`}><UserPlus size={14} /><span>Criar acesso</span></button>}
                 <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
                 <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
                 <div className="qr-popover" data-qr-slug={department.slug}>
@@ -618,23 +632,35 @@ export function AdministrationPage() {
               </article>
             )
           })}</div>
-          {accountDepartment && <form className="account-create-form" onSubmit={(event) => void submitAccount(event)}>
-            <div className="account-create-heading">
-              <div className="form-section-title"><UserPlus size={17} /><strong>Criar acesso · {accountDepartment.name}</strong></div>
-              <button type="button" className="icon-button" onClick={() => setAccountDepartment(null)} aria-label="Fechar cadastro de acesso"><X size={15} /></button>
-            </div>
-            {accountError && <div className="alert alert-error" role="alert">{accountError}</div>}
-            {loadingProfiles ? <div className="loading-panel"><span className="spinner" /> Carregando perfis…</div> : assignableProfiles.length > 0 && <div className="account-create-fields">
-              <label className="form-field"><span>Nome completo</span><input value={accountName} onChange={(event) => setAccountName(event.target.value)} required maxLength={120} autoComplete="name" /></label>
-              <label className="form-field"><span>E-mail</span><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} required maxLength={255} autoComplete="email" /></label>
-              <label className="form-field"><span>Senha inicial</span><input type="password" value={accountPassword} onChange={(event) => setAccountPassword(event.target.value)} required minLength={8} maxLength={72} autoComplete="new-password" /></label>
-              <label className="form-field"><span>Perfil</span><select value={accountProfileId} onChange={(event) => setAccountProfileId(event.target.value)} required><option value="" disabled>Selecione um perfil</option>{assignableProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
-              <button className="button button-primary" type="submit" disabled={creatingAccount || loadingProfiles}>{creatingAccount ? 'Criando…' : 'Criar acesso'} <UserPlus size={15} /></button>
-            </div>}
-          </form>}
           <form className="add-sector-form" onSubmit={addSector}><div className="form-section-title"><Plus size={17} /><strong>Adicionar setor</strong></div><div className="add-sector-fields"><label className="form-field"><span>Nome do setor</span><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={70} placeholder="Ex.: Laboratório" /></label><label className="form-field"><span>Descrição</span><input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={100} placeholder="Ex.: Coleta e realização de exames" /></label><button className="button button-primary" disabled={saving}>{saving ? 'Salvando…' : 'Adicionar'} <ArrowUpRight size={16} /></button></div></form>
         </section>
-        <aside className="settings-side"><article className="panel roles-panel"><div className="panel-heading"><div><h2>Perfis de acesso</h2><p>Permissões para cada função</p></div><UsersRound size={18} /></div>{[['Administrador', 'Acesso total: setores, perguntas gerais, perguntas de qualquer setor e Ouvidoria'], ['Gestão', 'Acompanha indicadores e gerencia perguntas somente do setor associado à conta'], ['Ouvidoria', 'Acessa e trata manifestações da Ouvidoria']].map(([role, details]) => <div className="role-row" key={role}><span className="role-dot" /><span><strong>{role}</strong><small>{details}</small></span></div>)}</article><article className="settings-callout"><span className="callout-lock"><ShieldCheck size={19} /></span><strong>Privacidade em primeiro lugar</strong><p>O acesso a manifestações e dados pessoais depende do perfil e deve ser validado na API.</p><Link to="/privacidade">Ver política de privacidade <ArrowUpRight size={14} /></Link></article></aside>
+        <aside className="settings-side">
+          <article className="panel roles-panel">
+            <div className="panel-heading">
+              <div><h2>Perfis de acesso</h2><p>Permissões para cada função</p></div>
+              {canCreateAccounts
+                ? <button type="button" className="button button-outline account-create-trigger" onClick={() => void openAccountForm()}><UserPlus size={14} /> Criar acesso</button>
+                : <UsersRound size={18} />}
+            </div>
+            {[['Administrador', 'Acesso total: setores, perguntas gerais, perguntas de qualquer setor e Ouvidoria'], ['Gestão', 'Acompanha indicadores e gerencia perguntas somente do setor associado à conta'], ['Ouvidoria', 'Acessa e trata manifestações da Ouvidoria']].map(([role, details]) => <div className="role-row" key={role}><span className="role-dot" /><span><strong>{role}</strong><small>{details}</small></span></div>)}
+            {showAccountForm && <form className="account-create-form" onSubmit={(event) => void submitAccount(event)}>
+              <div className="account-create-heading">
+                <div className="form-section-title"><UserPlus size={17} /><strong>Novo acesso</strong></div>
+                <button type="button" className="icon-button" onClick={() => setShowAccountForm(false)} aria-label="Fechar cadastro de acesso"><X size={15} /></button>
+              </div>
+              {accountError && <div className="alert alert-error" role="alert">{accountError}</div>}
+              {loadingProfiles ? <div className="loading-panel"><span className="spinner" /> Carregando perfis…</div> : assignableProfiles.length > 0 && <div className="account-create-fields">
+                <label className="form-field"><span>Nome completo</span><input value={accountName} onChange={(event) => setAccountName(event.target.value)} required maxLength={120} autoComplete="name" /></label>
+                <label className="form-field"><span>E-mail</span><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} required maxLength={255} autoComplete="email" /></label>
+                <label className="form-field"><span>Senha inicial</span><input type="password" value={accountPassword} onChange={(event) => setAccountPassword(event.target.value)} required minLength={8} maxLength={72} autoComplete="new-password" /></label>
+                <label className="form-field"><span>Perfil</span><select value={accountProfileId} onChange={(event) => setAccountProfileId(event.target.value)} required><option value="" disabled>Selecione um perfil</option>{assignableProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
+                <label className="form-field"><span>Setor {accountRequiresSector ? '(obrigatório)' : '(opcional)'}</span><select value={accountSectorId} onChange={(event) => setAccountSectorId(event.target.value)} required={accountRequiresSector}><option value="">{accountRequiresSector ? 'Selecione um setor' : 'Sem setor'}</option>{departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
+                <button className="button button-primary" type="submit" disabled={creatingAccount || loadingProfiles}>{creatingAccount ? 'Criando…' : 'Criar acesso'} <UserPlus size={15} /></button>
+              </div>}
+            </form>}
+          </article>
+          <article className="settings-callout"><span className="callout-lock"><ShieldCheck size={19} /></span><strong>Privacidade em primeiro lugar</strong><p>O acesso a manifestações e dados pessoais depende do perfil e deve ser validado na API.</p><Link to="/privacidade">Ver política de privacidade <ArrowUpRight size={14} /></Link></article>
+        </aside>
       </div>
       <section className="panel question-config-note"><div className="settings-note-icon"><ClipboardList size={18} /></div><div><h2>Perguntas por setor</h2><p>Use a área “Perguntas” para adicionar, editar ou desativar perguntas. A Gestão acessa somente o setor associado à conta; o Administrador pode editar perguntas gerais e de qualquer setor.</p></div><Link className="button button-outline" to="/gestao/perguntas">Abrir perguntas <ArrowUpRight size={15} /></Link></section>
     </>

@@ -590,7 +590,7 @@ export async function createAdminAccount(input: {
   email: string
   password: string
   profileId: number
-  sectorId: number
+  sectorId: number | null
 }): Promise<void> {
   await backendRequest('/api/admin/usuarios', {
     method: 'POST',
