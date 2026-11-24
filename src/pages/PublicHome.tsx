@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowRight, Headset, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowRight, Headset, LogOut, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { HospitalFooter } from '../components/HospitalFooter'
 import { InstitutionPageBanner } from '../components/InstitutionPageBanner'
-import { getDepartments } from '../services/api'
+import { getCurrentUser, getDepartments, logout } from '../services/api'
 import { clearSurveyProgress } from '../services/surveyProgress'
 import type { Department } from '../types'
 
@@ -13,6 +13,7 @@ export function PublicHome() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [error, setError] = useState('')
   const [starting, setStarting] = useState('')
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser())
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -35,7 +36,9 @@ export function PublicHome() {
         <nav className="public-nav" aria-label="Navegação principal">
           <a href="#setores">Pesquisa</a>
           <Link to="/privacidade">Privacidade</Link>
-          <Link className="staff-link" to="/gestao/login">Acesso da equipe <ArrowRight size={15} /></Link>
+          {currentUser
+            ? <button className="staff-link public-session-exit" onClick={() => { logout(); setCurrentUser(null) }}>Sair da equipe <LogOut size={15} /></button>
+            : <Link className="staff-link" to="/gestao/login">Acesso da equipe <ArrowRight size={15} /></Link>}
         </nav>
         <a className="public-phone" href="tel:+555135461236" aria-label="Telefone geral: (51) 3546-1236">
           <Headset size={29} strokeWidth={1.7} />

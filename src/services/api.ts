@@ -1,4 +1,5 @@
 import { createDemoManifestations, createDemoSurveys, departments as demoDepartments, demoQuestions, getShift } from '../data/demo'
+import { getUserSectorSlugs } from './access'
 import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
@@ -469,7 +470,8 @@ export async function getDashboardData(): Promise<DashboardPayload> {
   const surveys = readDemo(DEMO_SURVEYS_KEY, createDemoSurveys)
   const manifestations = readDemo(DEMO_MANIFESTATIONS_KEY, createDemoManifestations)
   if (user?.role === 'Gestão') {
-    const sectorSurveys = surveys.filter((survey) => survey.sectorSlug === user.sectorSlug)
+    const allowedSectors = new Set(getUserSectorSlugs(user))
+    const sectorSurveys = surveys.filter((survey) => allowedSectors.has(survey.sectorSlug))
     return {
       surveys: sectorSurveys,
       manifestations: [],
@@ -590,17 +592,19 @@ export async function createAdminAccount(input: {
   email: string
   password: string
   profileId: number
-  sectorId: number | null
+  sectorIds: number[]
 }): Promise<void> {
+  const body = {
+    nome: input.name,
+    email: input.email,
+    senha: input.password,
+    perfil_id: input.profileId,
+    setor_id: input.sectorIds[0] ?? null,
+    ...(input.sectorIds.length > 1 ? { setor_ids: input.sectorIds } : {}),
+  }
   await backendRequest('/api/admin/usuarios', {
     method: 'POST',
-    body: JSON.stringify({
-      nome: input.name,
-      email: input.email,
-      senha: input.password,
-      perfil_id: input.profileId,
-      setor_id: input.sectorId,
-    }),
+    body: JSON.stringify(body),
   })
 }
 
@@ -608,7 +612,7 @@ export async function login(email: string, password: string, role: AuthUser['rol
   if (API_BASE_URL) {
     const result = await backendRequest<{
       token: string
-      usuario: { id: number; nome: string; email: string; perfil: string; permissoes: string[]; setor_id?: number | null }
+      usuario: { id: number; nome: string; email: string; perfil: string; permissoes: string[]; setor_id?: number | null; setor_ids?: number[] }
     }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, senha: password }),
@@ -625,12 +629,17 @@ export async function login(email: string, password: string, role: AuthUser['rol
         ? 'Gestão'
           : (() => { throw new Error('O perfil desta conta não é compatível com a área de gestão do front-end.') })()
     const departments = await getDepartments()
-    const linkedSector = departments.find((department) => Number(department.id) === Number(result.usuario.setor_id))
+    const linkedSectorIds = new Set([
+      ...(result.usuario.setor_id ? [result.usuario.setor_id] : []),
+      ...(result.usuario.setor_ids ?? []),
+    ].map(Number))
+    const linkedSectorSlugs = departments.filter((department) => linkedSectorIds.has(Number(department.id))).map((department) => department.slug)
     const user: AuthUser = {
       name: result.usuario.nome,
       email: result.usuario.email,
       role: userRole,
-      ...(linkedSector ? { sectorSlug: linkedSector.slug } : {}),
+      ...(linkedSectorSlugs.length === 1 ? { sectorSlug: linkedSectorSlugs[0] } : {}),
+      ...(linkedSectorSlugs.length ? { sectorSlugs: linkedSectorSlugs } : {}),
     }
     sessionStorage.setItem('sgep:user', JSON.stringify(user))
     return user
@@ -638,7 +647,7 @@ export async function login(email: string, password: string, role: AuthUser['rol
   if (!email.trim() || !password.trim()) throw new Error('Informe seu e-mail e sua senha.')
   if (role === 'Gestão' && !sectorSlug) throw new Error('Selecione o setor associado à conta de Gestão.')
   const defaultName = role === 'Administrador' ? 'Administrador' : role === 'Ouvidoria' ? 'Equipe de Ouvidoria' : 'Responsável pelo setor'
-  const user: AuthUser = { name: defaultName, email, role, ...(role === 'Gestão' ? { sectorSlug } : {}) }
+  const user: AuthUser = { name: defaultName, email, role, ...(role === 'Gestão' ? { sectorSlug, sectorSlugs: sectorSlug ? [sectorSlug] : [] } : {}) }
   sessionStorage.setItem(DEMO_TOKEN_KEY, 'demo-token')
   sessionStorage.setItem('sgep:user', JSON.stringify(user))
   return user

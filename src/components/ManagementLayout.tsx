@@ -2,6 +2,7 @@ import { Activity, BarChart3, CircleHelp, ClipboardList, ListChecks, LogOut, Mon
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Brand } from './Brand'
 import { getCurrentUser, logout } from '../services/api'
+import { getUserSectorSlugs } from '../services/access'
 import type { AuthUser } from '../types'
 
 const navigation = [
@@ -14,9 +15,9 @@ const navigation = [
 
 const roleRoutes: Record<AuthUser['role'], string[]> = {
   Administrador: ['/gestao/dashboard', '/gestao/ouvidoria', '/gestao/perguntas', '/gestao/configuracoes', '/tv-wall'],
-  Gestão: ['/gestao/dashboard', '/gestao/perguntas', '/tv-wall'],
+  Gestão: ['/gestao/dashboard', '/gestao/perguntas'],
   Ouvidoria: ['/gestao/ouvidoria'],
-  Visualizador: ['/gestao/dashboard', '/tv-wall'],
+  Visualizador: ['/gestao/dashboard'],
 }
 
 export function ProtectedLayout() {
@@ -28,7 +29,7 @@ export function ProtectedLayout() {
   if (!allowedRoutes?.length) return <Navigate to="/gestao/login" replace />
   const canAccessCurrentRoute = allowedRoutes.some((route) => location.pathname === route || location.pathname.startsWith(`${route}/`))
   if (!canAccessCurrentRoute) return <Navigate to={allowedRoutes[0]} replace />
-  if (user.role === 'Gestão' && !user.sectorSlug) return <Navigate to="/gestao/login" replace />
+  if (user.role === 'Gestão' && !getUserSectorSlugs(user).length) return <Navigate to="/gestao/login" replace />
   const visibleNavigation = navigation.filter(({ to }) => allowedRoutes.includes(to))
 
   function signOut() {

@@ -4,11 +4,27 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
-import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, updateManifestationStatus, updateQuestion } from '../services/api'
+import { getUserSectorSlugs } from '../services/access'
+import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, logout, updateManifestationStatus, updateQuestion } from '../services/api'
 import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
   return total ? Math.round((value / total) * 100) : 0
+}
+
+const MINIMUM_TEAM_RESPONSES = 5
+
+function getTeamKey(survey: SurveyRecord): string | null {
+  return survey.teamName ? `${survey.sectorSlug}\u0000${survey.teamName}` : null
+}
+
+function getTeamDisplayName(survey: SurveyRecord, counts: Map<string, number>): string {
+  const teamName = survey.teamName
+  const key = getTeamKey(survey)
+  if (!teamName || !key) return 'Equipe não exibida'
+  return (counts.get(key) ?? 0) >= MINIMUM_TEAM_RESPONSES
+    ? teamName
+    : 'Equipe oculta (mín. 5 respostas)'
 }
 
 function getNps(surveys: SurveyRecord[]) {
@@ -46,7 +62,8 @@ function exportCsv(payload: DashboardPayload, departments: Department[], include
   const sectorName = (slug: string) => departments.find((department) => department.slug === slug)?.name ?? slug
   const teamCounts = new Map<string, number>()
   for (const survey of payload.surveys) {
-    if (survey.teamName) teamCounts.set(survey.teamName, (teamCounts.get(survey.teamName) ?? 0) + 1)
+    const key = getTeamKey(survey)
+    if (key) teamCounts.set(key, (teamCounts.get(key) ?? 0) + 1)
   }
   const headers = ['Data', 'Setor', 'Turno', ...(includeTeams ? ['Equipe'] : []), 'Nota geral (1-5)', 'NPS (0-10)', 'Média parcial', 'Pesquisa completa']
   const rows = [
@@ -55,7 +72,7 @@ function exportCsv(payload: DashboardPayload, departments: Department[], include
       new Date(survey.createdAt).toLocaleString('pt-BR'),
       sectorName(survey.sectorSlug),
       survey.shift,
-      ...(includeTeams ? [survey.teamName && (teamCounts.get(survey.teamName) ?? 0) >= 5 ? survey.teamName : 'Volume insuficiente'] : []),
+      ...(includeTeams ? [getTeamDisplayName(survey, teamCounts)] : []),
       survey.answers.overallRating ?? '',
       survey.answers.nps ?? '',
       survey.mean ?? '',
@@ -142,7 +159,10 @@ export function DashboardPage() {
   const { data, departments, error, loading, refresh, lastUpdated } = useDashboard()
   const user = getCurrentUser()
   const canFilterTeam = user?.role === 'Gestão' || user?.role === 'Administrador'
-  const [sector, setSector] = useState(user?.role === 'Gestão' ? user.sectorSlug ?? 'todos' : 'todos')
+  const userSectorSlugs = getUserSectorSlugs(user)
+  const managedSectors = departments.filter((department) => user?.role !== 'Gestão' || userSectorSlugs.includes(department.slug))
+  const canChooseSector = user?.role !== 'Gestão' || userSectorSlugs.length > 1
+  const [sector, setSector] = useState(user?.role === 'Gestão' && userSectorSlugs.length === 1 ? userSectorSlugs[0] : 'todos')
   const [period, setPeriod] = useState('30')
   const [shift, setShift] = useState('todos')
   const [rating, setRating] = useState('todas')
@@ -167,35 +187,42 @@ export function DashboardPage() {
   const shiftAndRatingSurveys = periodAndSectorSurveys.filter(matchingFilters)
   const teamCounts = new Map<string, number>()
   for (const survey of shiftAndRatingSurveys) {
-    if (survey.teamName) teamCounts.set(survey.teamName, (teamCounts.get(survey.teamName) ?? 0) + 1)
+    const key = getTeamKey(survey)
+    if (key) teamCounts.set(key, (teamCounts.get(key) ?? 0) + 1)
   }
-  const availableTeams = [...teamCounts].filter(([, count]) => count >= 5).map(([name]) => name)
-  const filtered = shiftAndRatingSurveys.filter((survey) => !canFilterTeam || team === 'todos' || survey.teamName === team)
+  const availableTeams = [...teamCounts]
+    .filter(([, count]) => count >= MINIMUM_TEAM_RESPONSES)
+    .map(([key]) => {
+      const [slug, name] = key.split('\u0000')
+      const sectorName = departments.find((department) => department.slug === slug)?.name ?? slug
+      return { key, label: `${name} · ${sectorName}` }
+    })
+  const filtered = shiftAndRatingSurveys.filter((survey) => !canFilterTeam || team === 'todos' || getTeamKey(survey) === team)
   const answered = filtered.filter((survey) => survey.mean !== null)
   const average = answered.length ? answered.reduce((sum, survey) => sum + (survey.mean ?? 0), 0) / answered.length : 0
   const incomplete = filtered.filter((survey) => !survey.complete).length
   const nps = getNps(periodAndSectorSurveys.filter((survey) =>
     (shift === 'todos' || survey.shift === shift)
-    && (!canFilterTeam || team === 'todos' || survey.teamName === team),
+    && (!canFilterTeam || team === 'todos' || getTeamKey(survey) === team),
   ))
   const since = new Date(now.getTime() - Number(period) * 24 * 60 * 60 * 1000)
   const previousSince = new Date(since.getTime() - Number(period) * 24 * 60 * 60 * 1000)
   const previousTotal = (data?.surveys ?? []).filter((survey) => {
     const date = new Date(survey.createdAt)
     const previousWindow = (sector === 'todos' || survey.sectorSlug === sector) && date >= previousSince && date < since
-    const previousTeam = !canFilterTeam || team === 'todos' || survey.teamName === team
+    const previousTeam = !canFilterTeam || team === 'todos' || getTeamKey(survey) === team
     return previousWindow && previousTeam && matchingFilters(survey)
   }).length
   const change = previousTotal ? Math.round(((filtered.length - previousTotal) / previousTotal) * 100) : null
   const trend = getTrendChart(filtered, now, Number(period))
-  const sectorStats = departments.map((department) => {
+  const sectorStats = managedSectors.map((department) => {
     const surveys = filtered.filter((survey) => survey.sectorSlug === department.slug && survey.mean !== null)
     return {
       department,
       total: surveys.length,
-      average: surveys.length ? surveys.reduce((sum, survey) => sum + (survey.mean ?? 0), 0) / surveys.length : 0,
+      average: surveys.length ? surveys.reduce((sum, survey) => sum + (survey.mean ?? 0), 0) / surveys.length : null,
     }
-  }).filter((item) => item.total).sort((a, b) => b.average - a.average)
+  }).sort((a, b) => (b.average ?? -1) - (a.average ?? -1))
 
   async function downloadReport() {
     if (!data) return
@@ -214,10 +241,10 @@ export function DashboardPage() {
       <div className="dashboard-toolbar">
         <div className="toolbar-label"><Filter size={15} /> FILTROS</div>
         <label><span>Período</span><select value={period} onChange={(event) => setPeriod(event.target.value)}><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select><ChevronDown size={14} /></label>
-        <label><span>Setor</span><select value={sector} disabled={user?.role === 'Gestão'} onChange={(event) => setSector(event.target.value)}>{user?.role !== 'Gestão' && <option value="todos">Todos os setores</option>}{departments.filter((item) => user?.role !== 'Gestão' || item.slug === user.sectorSlug).map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select><ChevronDown size={14} /></label>
+        <label><span>Setor</span><select value={sector} disabled={!canChooseSector} onChange={(event) => setSector(event.target.value)}>{(user?.role !== 'Gestão' || userSectorSlugs.length > 1) && <option value="todos">{user?.role === 'Gestão' ? 'Meus setores' : 'Todos os setores'}</option>}{managedSectors.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select><ChevronDown size={14} /></label>
         <label><span>Turno</span><select value={shift} onChange={(event) => setShift(event.target.value)}><option value="todos">Todos os turnos</option><option>Manhã</option><option>Tarde</option><option>Noite</option></select><ChevronDown size={14} /></label>
         <label><span>Nota</span><select value={rating} onChange={(event) => setRating(event.target.value)}><option value="todas">Todas as notas</option><option value="baixas">Baixas · 1–2</option><option value="regulares">Regulares · 3</option><option value="positivas">Positivas · 4–5</option></select><ChevronDown size={14} /></label>
-        {canFilterTeam && <label><span>Equipe</span><select value={team} onChange={(event) => setTeam(event.target.value)}><option value="todos">Volume mínimo</option>{availableTeams.map((name) => <option key={name}>{name}</option>)}</select><ChevronDown size={14} /></label>}
+        {canFilterTeam && <label><span>Equipe</span><select value={team} onChange={(event) => setTeam(event.target.value)}><option value="todos">Mínimo de 5 respostas</option>{availableTeams.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14} /></label>}
         <span className="update-note"><span className="live-dot" /> Atualizado {lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '—'}</span>
       </div>
       {loading && !data ? <div className="loading-panel"><span className="spinner" /> Carregando indicadores…</div> : (
@@ -238,14 +265,14 @@ export function DashboardPage() {
               </div>
             </article>
             <article className="panel breakdown-panel">
-              <div className="panel-heading"><div><h2>Satisfação por setor</h2><p>Nota média · escala de 1 a 5</p></div><Link to="/gestao/configuracoes" className="link-small">Ver setores <ArrowUpRight size={14} /></Link></div>
-              <div className="department-bars">{sectorStats.length ? sectorStats.map(({ department, total, average: score }) => <div className="department-bar" key={department.id}><span className={`mini-department-icon tone-${department.icon}`}><DepartmentIcon name={department.icon} size={16} /></span><span className="department-bar-name">{department.name}</span><span className="bar-track"><i style={{ width: `${score / 5 * 100}%` }} /></span><strong>{score.toFixed(1).replace('.', ',')}</strong><small>{total}</small></div>) : <div className="empty-note">Ainda não há respostas neste filtro.</div>}</div>
+              <div className="panel-heading"><div><h2>Satisfação por setor</h2><p>Nota média · escala de 1 a 5</p></div>{user?.role === 'Administrador' && <Link to="/gestao/configuracoes" className="link-small">Gerenciar setores <ArrowUpRight size={14} /></Link>}</div>
+              <div className="department-bars">{sectorStats.length ? sectorStats.map(({ department, total, average: score }) => <div className={`department-bar${score === null ? ' department-bar-empty' : ''}`} key={department.id}><span className={`mini-department-icon tone-${department.icon}`}><DepartmentIcon name={department.icon} size={16} /></span><span className="department-bar-name" title={department.name}>{department.name}</span><span className="bar-track"><i style={{ width: `${score === null ? 0 : score / 5 * 100}%` }} /></span><strong>{score === null ? '—' : score.toFixed(1).replace('.', ',')}</strong><small>{total || '—'}</small></div>) : <div className="empty-note">Nenhum setor ativo para exibir.</div>}</div>
             </article>
           </section>
 
           <section className="bottom-grid">
             <article className="panel recent-panel"><div className="panel-heading"><div><h2>Respostas recentes</h2><p>Últimos registros da pesquisa</p></div><button className="link-small" onClick={downloadReport}>Ver relatório <ArrowUpRight size={14} /></button></div>
-              <div className="table-wrap"><table><thead><tr><th>SETOR</th><th>DATA E TURNO</th>{canFilterTeam && <th>EQUIPE</th>}<th>AVALIAÇÃO</th><th>STATUS</th></tr></thead><tbody>{filtered.slice(0, 5).map((survey) => <tr key={survey.id}><td><span className="table-sector">{departments.find((item) => item.slug === survey.sectorSlug)?.name ?? survey.sectorSlug}</span></td><td>{new Date(survey.createdAt).toLocaleDateString('pt-BR')} <small>{survey.shift}</small></td>{canFilterTeam && <td>{survey.teamName && (teamCounts.get(survey.teamName) ?? 0) >= 5 ? survey.teamName : 'Volume insuficiente'}</td>}<td><span className="rating-stars">{'★'.repeat(survey.answers.overallRating ?? 0)}<span>{'★'.repeat(5 - (survey.answers.overallRating ?? 0))}</span></span></td><td><span className={`status-pill ${survey.complete ? 'status-complete' : 'status-partial'}`}>{survey.complete ? 'Completa' : 'Parcial'}</span></td></tr>)}</tbody></table>{!filtered.length && <div className="empty-note">Nenhuma resposta encontrada para este período.</div>}</div>
+              <div className="table-wrap"><table><thead><tr><th>SETOR</th><th>DATA E TURNO</th>{canFilterTeam && <th>EQUIPE</th>}<th>AVALIAÇÃO</th><th>STATUS</th></tr></thead><tbody>{filtered.slice(0, 5).map((survey) => <tr key={survey.id}><td><span className="table-sector">{departments.find((item) => item.slug === survey.sectorSlug)?.name ?? 'Setor indisponível'}</span></td><td>{new Date(survey.createdAt).toLocaleDateString('pt-BR')} <small>{survey.shift}</small></td>{canFilterTeam && <td>{getTeamDisplayName(survey, teamCounts)}</td>}<td>{survey.answers.overallRating === undefined ? <span className="rating-missing" title="Esta pesquisa ainda não tem avaliação registrada">—</span> : <span className="rating-stars" aria-label={`${survey.answers.overallRating} de 5 estrelas`}>{'★'.repeat(survey.answers.overallRating)}<span>{'★'.repeat(5 - survey.answers.overallRating)}</span></span>}</td><td><span className={`status-pill ${survey.complete ? 'status-complete' : 'status-partial'}`}>{survey.complete ? 'Completa' : 'Parcial'}</span></td></tr>)}</tbody></table>{!filtered.length && <div className="empty-note">Nenhuma resposta encontrada para este período.</div>}</div>
             </article>
             <article className="panel manifestations-summary"><div className="panel-heading"><div><h2>Ouvidoria</h2><p>Manifestações para acompanhamento</p></div><span className="summary-icon"><ClipboardList size={17} /></span></div><strong className="manifestation-total">{data?.manifestationOpenCount ?? data?.manifestations.filter((item) => item.status !== 'Concluída').length ?? 0}</strong><span className="manifestation-caption">em aberto ou em análise</span><div className="summary-divider" /><div className="summary-foot"><span>Prazo de resposta</span><strong>Definido pela Ouvidoria</strong></div>{user?.role === 'Administrador' || user?.role === 'Ouvidoria' ? <Link className="button button-dark button-wide" to="/gestao/ouvidoria">Acessar Ouvidoria <ArrowUpRight size={16} /></Link> : <span className="dashboard-disclaimer">A Ouvidoria é administrada por uma equipe dedicada.</span>}</article>
           </section>
@@ -342,9 +369,10 @@ export function ManifestationDetailPage() {
 
 export function QuestionsManagementPage() {
   const user = getCurrentUser()
+  const userSectorSlugs = getUserSectorSlugs(user)
   const [departments, setDepartments] = useState<Department[]>([])
   const [questions, setQuestions] = useState<SurveyQuestion[]>([])
-  const [scope, setScope] = useState<string>(user?.role === 'Gestão' ? user.sectorSlug ?? '' : 'geral')
+  const [scope, setScope] = useState<string>(user?.role === 'Gestão' ? userSectorSlugs[0] ?? '' : 'geral')
   const [text, setText] = useState('')
   const [type, setType] = useState<SurveyQuestionType>('rostinho')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -413,7 +441,7 @@ export function QuestionsManagementPage() {
     }
   }
 
-  if (!user || (user.role === 'Gestão' && (!user.sectorSlug || scope !== user.sectorSlug))) {
+  if (!user || (user.role === 'Gestão' && (!userSectorSlugs.length || !userSectorSlugs.includes(scope)))) {
     return <Navigate to="/gestao/login" replace />
   }
 
@@ -423,7 +451,9 @@ export function QuestionsManagementPage() {
         eyebrow="PESQUISAS E JORNADA"
         title="Perguntas"
         description={user.role === 'Gestão' ? 'Gerencie as perguntas da pesquisa do seu setor.' : 'Gerencie perguntas gerais e perguntas de cada setor.'}
-        action={user.role === 'Administrador' ? <label className="question-scope-select"><span>Escopo</span><select value={scope} onChange={(event) => { setScope(event.target.value); setNotice(''); void refresh(event.target.value) }}><option value="geral">Perguntas gerais</option>{departments.map((department) => <option key={department.id} value={department.slug}>{department.name}</option>)}</select><ChevronDown size={14} /></label> : <span className="status-pill status-complete">{departments.find((department) => department.slug === user.sectorSlug)?.name ?? 'Setor vinculado'}</span>}
+        action={user.role === 'Administrador' || userSectorSlugs.length > 1
+          ? <label className="question-scope-select"><span>Escopo</span><select value={scope} onChange={(event) => { setScope(event.target.value); setNotice(''); void refresh(event.target.value) }}>{user.role === 'Administrador' && <option value="geral">Perguntas gerais</option>}{departments.filter((department) => user.role === 'Administrador' || userSectorSlugs.includes(department.slug)).map((department) => <option key={department.id} value={department.slug}>{department.name}</option>)}</select><ChevronDown size={14} /></label>
+          : <span className="status-pill status-complete">{departments.find((department) => department.slug === scope)?.name ?? 'Setor vinculado'}</span>}
       />
       {error && <div className="alert alert-error" role="alert">{error}</div>}
       {notice && <div className="alert alert-success" role="status">{notice}</div>}
@@ -468,7 +498,7 @@ export function AdministrationPage() {
   const [accountEmail, setAccountEmail] = useState('')
   const [accountPassword, setAccountPassword] = useState('')
   const [accountProfileId, setAccountProfileId] = useState('')
-  const [accountSectorId, setAccountSectorId] = useState('')
+  const [accountSectorIds, setAccountSectorIds] = useState<string[]>([])
   const [accountError, setAccountError] = useState('')
   const [loadingProfiles, setLoadingProfiles] = useState(false)
   const [creatingAccount, setCreatingAccount] = useState(false)
@@ -481,13 +511,14 @@ export function AdministrationPage() {
   const canCreateAccounts = getCurrentUser()?.role === 'Administrador'
   const selectedAccountProfile = assignableProfiles.find((item) => String(item.id) === accountProfileId)
   const accountRequiresSector = selectedAccountProfile ? ['admin_setor', 'gestao'].includes(selectedAccountProfile.permission) : false
+  const accountAllowsMultipleSectors = selectedAccountProfile?.permission === 'gestao'
 
   async function openAccountForm() {
     setShowAccountForm(true)
     setAccountName('')
     setAccountEmail('')
     setAccountPassword('')
-    setAccountSectorId('')
+    setAccountSectorIds([])
     setAccountError('')
     setNotice('')
     if (assignableProfiles.length) {
@@ -516,8 +547,8 @@ export function AdministrationPage() {
       return
     }
     const requiresSector = ['admin_setor', 'gestao'].includes(profile.permission)
-    if (requiresSector && !accountSectorId) {
-      setAccountError('Selecione o setor associado a este perfil.')
+    if (requiresSector && !accountSectorIds.length) {
+      setAccountError('Selecione ao menos um setor associado a este perfil.')
       return
     }
 
@@ -530,16 +561,19 @@ export function AdministrationPage() {
         email: accountEmail.trim(),
         password: accountPassword,
         profileId: Number(accountProfileId),
-        sectorId: accountSectorId ? Number(accountSectorId) : null,
+        sectorIds: accountSectorIds.map(Number),
       })
-      const department = departments.find((item) => item.id === accountSectorId)
-      setNotice(`Acesso criado para ${accountName.trim()} com perfil ${profile.name}${department ? ` no setor ${department.name}` : ''}.`)
+      const selectedDepartments = departments.filter((item) => accountSectorIds.includes(item.id))
+      const sectorDescription = selectedDepartments.length
+        ? ` nos setores ${selectedDepartments.map((item) => item.name).join(', ')}`
+        : ''
+      setNotice(`Acesso criado para ${accountName.trim()} com perfil ${profile.name}${sectorDescription}.`)
       setShowAccountForm(false)
       setAccountName('')
       setAccountEmail('')
       setAccountPassword('')
       setAccountProfileId('')
-      setAccountSectorId('')
+      setAccountSectorIds([])
     } catch (cause) {
       setAccountError(cause instanceof Error ? cause.message : 'Não foi possível criar o acesso.')
     } finally {
@@ -653,8 +687,10 @@ export function AdministrationPage() {
                 <label className="form-field"><span>Nome completo</span><input value={accountName} onChange={(event) => setAccountName(event.target.value)} required maxLength={120} autoComplete="name" /></label>
                 <label className="form-field"><span>E-mail</span><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} required maxLength={255} autoComplete="email" /></label>
                 <label className="form-field"><span>Senha inicial</span><input type="password" value={accountPassword} onChange={(event) => setAccountPassword(event.target.value)} required minLength={8} maxLength={72} autoComplete="new-password" /></label>
-                <label className="form-field"><span>Perfil</span><select value={accountProfileId} onChange={(event) => setAccountProfileId(event.target.value)} required><option value="" disabled>Selecione um perfil</option>{assignableProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
-                <label className="form-field"><span>Setor {accountRequiresSector ? '(obrigatório)' : '(opcional)'}</span><select value={accountSectorId} onChange={(event) => setAccountSectorId(event.target.value)} required={accountRequiresSector}><option value="">{accountRequiresSector ? 'Selecione um setor' : 'Sem setor'}</option>{departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
+                <label className="form-field"><span>Perfil</span><select value={accountProfileId} onChange={(event) => { setAccountProfileId(event.target.value); setAccountSectorIds([]) }} required><option value="" disabled>Selecione um perfil</option>{assignableProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
+                {accountAllowsMultipleSectors
+                  ? <fieldset className="account-sector-field" disabled={creatingAccount}><legend>Setores {accountRequiresSector ? '(selecione ao menos um)' : '(opcional)'}</legend><div className="account-sector-options">{departments.filter((department) => department.active).map((department) => <label key={department.id} className="account-sector-option"><input type="checkbox" checked={accountSectorIds.includes(department.id)} onChange={(event) => setAccountSectorIds((current) => event.target.checked ? [...current, department.id] : current.filter((id) => id !== department.id))} /><span>{department.name}</span></label>)}</div></fieldset>
+                  : <label className="form-field"><span>Setor {accountRequiresSector ? '(obrigatório)' : '(opcional)'}</span><select value={accountSectorIds[0] ?? ''} onChange={(event) => setAccountSectorIds(event.target.value ? [event.target.value] : [])} required={accountRequiresSector}><option value="">{accountRequiresSector ? 'Selecione um setor' : 'Sem setor'}</option>{departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>}
                 <button className="button button-primary" type="submit" disabled={creatingAccount || loadingProfiles}>{creatingAccount ? 'Criando…' : 'Criar acesso'} <UserPlus size={15} /></button>
               </div>}
             </form>}
@@ -683,7 +719,7 @@ export function TVWallPage() {
   }
 
   return <main className="tv-wall">
-    <header className="tv-header"><Brand light /><div className="tv-live"><span className="live-dot" /> PAINEL PÚBLICO · DADOS AGREGADOS</div><div className="tv-time">{lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '--:--'}<button onClick={toggleFullscreen} title="Tela cheia"><ExternalLink size={18} /></button><button onClick={() => void refresh()} title="Atualizar painel"><RefreshCw size={18} /></button><Link to="/" title="Voltar ao início"><ArrowUpRight size={18} /></Link></div></header>
+    <header className="tv-header"><Brand light /><div className="tv-live"><span className="live-dot" /> PAINEL DE INDICADORES · ACESSO ADMINISTRATIVO</div><div className="tv-time">{lastUpdated?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? '--:--'}<button onClick={toggleFullscreen} title="Tela cheia"><ExternalLink size={18} /></button><button onClick={() => void refresh()} title="Atualizar painel"><RefreshCw size={18} /></button><Link to="/" title="Sair e voltar ao início" onClick={() => logout()}><ArrowUpRight size={18} /></Link></div></header>
     {error && <div className="alert alert-error" role="alert">{error}</div>}
     {loading && !data ? <div className="loading-panel"><span className="spinner" /> Carregando painel…</div> : <div className="tv-content"><div className="tv-intro"><span className="eyebrow">CUIDADO QUE SE TRANSFORMA</span><h1>Juntos, fazemos melhor.</h1><p>Ouvimos cada pessoa para tornar a experiência de cuidado cada vez mais acolhedora.</p></div>
       <section className="tv-metrics"><article><span className="tv-metric-icon">☺</span><span className="tv-metric-number">{average ? `${average.toFixed(1).replace('.', ',')}` : '—'}<small>/5</small></span><span className="tv-metric-caption">satisfação média</span></article><article><span className="tv-metric-icon">♡</span><span className="tv-metric-number">{nps === null ? '—' : nps}<small>{nps === null ? '' : ' pts'}</small></span><span className="tv-metric-caption">NPS de recomendação</span></article><article><span className="tv-metric-icon">✦</span><span className="tv-metric-number">{data?.responseCount === null ? '—' : (data?.responseCount ?? 0).toLocaleString('pt-BR')}</span><span className="tv-metric-caption">experiências compartilhadas</span></article><article><span className="tv-metric-icon">♥</span><span className="tv-metric-number">{compliments.toLocaleString('pt-BR')}</span><span className="tv-metric-caption">elogios recebidos</span></article></section>

@@ -5,7 +5,7 @@ import { AdministrationPage, DashboardPage, LoginPage, ManifestationDetailPage, 
 import { OmbudsmanForm, SurveyFlow, SurveyThanks } from './pages/SurveyFlow'
 import { ManualPage } from './pages/ManualPage'
 import { PrivacyPage, PublicHome } from './pages/PublicHome'
-import { createSurvey } from './services/api'
+import { createSurvey, getCurrentUser } from './services/api'
 import { readSurveyProgress, saveSurveyProgress } from './services/surveyProgress'
 import './App.css'
 
@@ -83,6 +83,11 @@ function LegacySurveyRoute() {
   return <Navigate to={`/pesquisa/${slug}?${query.toString()}`} replace />
 }
 
+function AdminTVWallRoute() {
+  const user = getCurrentUser()
+  return user?.role === 'Administrador' ? <TVWallPage /> : <Navigate to="/gestao/login" replace />
+}
+
 function RouterView() {
   return (
     <Routes>
@@ -93,7 +98,7 @@ function RouterView() {
       <Route path="/pesquisa/:slug/pergunta/:step" element={<LegacySurveyRoute />} />
       <Route path="/pesquisa/agradecimento" element={<SurveyThanks />} />
       <Route path="/ouvidoria" element={<OmbudsmanForm />} />
-      <Route path="/tv-wall" element={<TVWallPage />} />
+      <Route path="/tv-wall" element={<AdminTVWallRoute />} />
       <Route path="/gestao/login" element={<LoginPage />} />
       <Route path="/gestao" element={<ProtectedLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />

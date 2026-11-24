@@ -81,6 +81,7 @@ export interface AuthUser {
   email: string
   role: 'Ouvidoria' | 'Gestão' | 'Administrador' | 'Visualizador'
   sectorSlug?: string
+  sectorSlugs?: string[]
 }
 
 export interface AssignableProfile {

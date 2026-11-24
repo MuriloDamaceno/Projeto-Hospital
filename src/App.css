@@ -376,6 +376,20 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
   .management-mobilebar .brand img { width: 132px; }
 }
 
+.public-session-exit { border: 0; padding: 0; background: transparent; font: inherit; cursor: pointer; }
+.department-bar-empty .bar-track { background: #f0f2f0; }
+.rating-missing { color: #78838d; font-weight: 700; }
+.account-sector-field { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 11px 12px; border: 1px solid #d6dade; border-radius: 2px; }
+.account-sector-field legend { padding: 0 5px; color: #5d6772; font-size: 10px; font-weight: 650; }
+.account-sector-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.account-sector-option { display: flex; align-items: center; gap: 7px; color: #5d6772; font-size: 10px; }
+.account-sector-option input { accent-color: #e5323b; }
+.account-create-fields .account-sector-field + .button { grid-column: 1 / -1; }
+
+@media (max-width: 560px) {
+  .account-sector-options { grid-template-columns: 1fr; }
+}
+
 /* Shared visual language from the hospital website */
 .public-page,.legal-page,.manual-page,.survey-page,.tv-wall { border-top: 0; }
 .brand img { width: 150px; }
