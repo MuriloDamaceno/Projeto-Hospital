@@ -2,6 +2,7 @@ export interface SurveyProgress {
   surveyId: string
   sectorSlug: string
   step: number
+  lowRating?: boolean
 }
 
 const storageKey = 'hospital-survey-progress'
@@ -11,6 +12,9 @@ export function readSurveyProgress(): SurveyProgress | null {
   if (!stored) return null
 
   const value: unknown = JSON.parse(stored)
+  const lowRating = typeof value === 'object' && value !== null && 'lowRating' in value
+    ? value.lowRating
+    : undefined
   if (
     typeof value === 'object'
     && value !== null
@@ -22,8 +26,14 @@ export function readSurveyProgress(): SurveyProgress | null {
     && typeof value.step === 'number'
     && Number.isInteger(value.step)
     && value.step > 0
+    && (lowRating === undefined || typeof lowRating === 'boolean')
   ) {
-    return { surveyId: value.surveyId, sectorSlug: value.sectorSlug, step: value.step }
+    return {
+      surveyId: value.surveyId,
+      sectorSlug: value.sectorSlug,
+      step: value.step,
+      ...(lowRating === true ? { lowRating: true } : {}),
+    }
   }
 
   sessionStorage.removeItem(storageKey)

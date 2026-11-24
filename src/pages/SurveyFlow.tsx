@@ -5,7 +5,7 @@ import { Brand } from '../components/Brand'
 import { HospitalFooter } from '../components/HospitalFooter'
 import { InstitutionPageBanner } from '../components/InstitutionPageBanner'
 import { completeSurvey, createManifestation, getDepartments, getQuestions, saveSurveyAnswer } from '../services/api'
-import { clearSurveyProgress, readSurveyProgress } from '../services/surveyProgress'
+import { clearSurveyProgress, readSurveyProgress, saveSurveyProgress } from '../services/surveyProgress'
 import { departments as fallbackDepartments } from '../data/demo'
 import type { Department, ManifestationType, SurveyQuestion } from '../types'
 
@@ -63,6 +63,10 @@ export function SurveyFlow({ slug, surveyId, currentStep, onStepChange }: {
   async function finishSurvey() {
     const survey = await completeSurvey(surveyId)
     if (survey.destination === 'ouvidoria' || (!survey.destination && survey.mean !== null && survey.mean <= 2)) {
+      if (survey.mean !== null && survey.mean <= 2) {
+        const progress = readSurveyProgress()
+        if (progress) saveSurveyProgress({ ...progress, lowRating: true })
+      }
       navigate('/ouvidoria')
     } else {
       navigate('/pesquisa/agradecimento')
@@ -151,6 +155,7 @@ function SurveyMessage({ title, text, icon = 'check', surveyId }: { title: strin
 export function OmbudsmanForm() {
   const progress = readSurveyProgress()
   const surveyId = progress?.surveyId ?? ''
+  const lowRating = progress?.lowRating === true
   const requestedSector = progress?.sectorSlug ?? ''
   const [sectorSlug, setSectorSlug] = useState(requestedSector)
   const [type, setType] = useState<ManifestationType>('Reclamação')
@@ -200,12 +205,18 @@ export function OmbudsmanForm() {
   return (
     <main className="survey-page">
       <header className="survey-header"><Brand /><Link className="survey-exit" to="/">Sair</Link></header>
-      <InstitutionPageBanner kicker="OUVIDORIA" title="Quer falar com a gente?" subtitle="Registre um elogio, reclamação ou sugestão. Você pode fazer isso anonimamente." />
+      <InstitutionPageBanner
+        kicker="OUVIDORIA"
+        title="Quer falar com a gente?"
+        subtitle={lowRating
+          ? 'Conte o que aconteceu à Ouvidoria. Você pode enviar sua manifestação anonimamente.'
+          : 'Registre um elogio, reclamação ou sugestão. Você pode fazer isso anonimamente.'}
+      />
       <section className="ombudsman-card">
-        <p className="survey-subtitle">Sua manifestação ajuda a melhorar o atendimento do hospital.</p>
+        <p className="survey-subtitle">{lowRating ? 'Sua avaliação foi baixa. Conte à Ouvidoria como podemos melhorar.' : 'Sua manifestação ajuda a melhorar o atendimento do hospital.'}</p>
         {error && <div className="alert alert-error" role="alert">{error}</div>}
         <form onSubmit={submit}>
-          <label className="form-field"><span>Esta mensagem é um…</span><select value={type} onChange={(event) => setType(event.target.value as ManifestationType)}><option>Elogio</option><option>Reclamação</option><option>Sugestão</option></select></label>
+          <label className="form-field"><span>Esta mensagem é um…</span><select value={type} onChange={(event) => setType(event.target.value as ManifestationType)}>{!lowRating && <option>Elogio</option>}<option>Reclamação</option><option>Sugestão</option></select></label>
           <label className="form-field"><span>Setor relacionado</span><select value={sectorSlug} onChange={(event) => setSectorSlug(event.target.value)}>{departments.filter((item) => item.active).map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>
           <label className="form-field"><span>O que aconteceu?</span><textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} maxLength={1500} required placeholder="Conte para nós com suas palavras…" /><small className="field-hint">{description.length}/1500 caracteres</small></label>
           <label className="check-row"><input type="checkbox" checked={!anonymous} onChange={(event) => setAnonymous(!event.target.checked)} /><span>Quero que a Ouvidoria possa entrar em contato comigo</span></label>
