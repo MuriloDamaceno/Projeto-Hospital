@@ -350,7 +350,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,te
 .tv-wall { background: #5d6772; }
 .tv-intro .eyebrow,.tv-section-heading .eyebrow,.tv-privacy svg,.tv-footer > span:first-child > span { color: #ffb7bb; }
 .tv-metrics article,.tv-sectors { background: #4f5964; }
-.tv-metric-icon,.tv-score-track i { color: #ffb7bb; background: #606b76; }
+.tv-metric-icon { color: #ffb7bb; background: transparent; }
+.tv-score-track i { color: #ffb7bb; background: #606b76; }
 .tv-score-track i { background: #e5323b; }
 .tv-metric-number small,.tv-score small { color: #d2d7dc; }
 .tv-footer { color: #d2d7dc; }
