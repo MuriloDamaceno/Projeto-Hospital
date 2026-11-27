@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowDownToLine, ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, ClipboardList, Copy, Download, ExternalLink, Filter, ListChecks, Plus, RefreshCw, Search, ShieldCheck, Smile, UserPlus, UsersRound, X } from 'lucide-react'
+  import { useEffect, useMemo, useState } from 'react'
+import { ArrowDownRight, ArrowDownToLine, ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, ClipboardList, Copy, Download, ExternalLink, Filter, ListChecks, Pencil, Plus, RefreshCw, Search, ShieldCheck, Smile, Trash2, UserPlus, UsersRound, X } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { getUserSectorSlugs } from '../services/access'
-import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, updateManifestationStatus, updateQuestion } from '../services/api'
+import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
 import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
@@ -508,6 +508,10 @@ export function AdministrationPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editingSectorId, setEditingSectorId] = useState<string | null>(null)
+  const [editingSectorName, setEditingSectorName] = useState('')
+  const [editingSectorSlug, setEditingSectorSlug] = useState('')
+  const [editingSectorActive, setEditingSectorActive] = useState(true)
   const canCreateAccounts = getCurrentUser()?.role === 'Administrador'
   const selectedAccountProfile = assignableProfiles.find((item) => String(item.id) === accountProfileId)
   const accountRequiresSector = selectedAccountProfile ? ['admin_setor', 'gestao'].includes(selectedAccountProfile.permission) : false
@@ -643,6 +647,74 @@ export function AdministrationPage() {
     }
   }
 
+  function startSectorEdit(department: Department) {
+    setEditingSectorId(department.id)
+    setEditingSectorName(department.name)
+    setEditingSectorSlug(department.slug)
+    setEditingSectorActive(department.active)
+    setError('')
+    setNotice('')
+  }
+
+  async function saveSectorEdit(department: Department) {
+    const slug = editingSectorSlug.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    if (!editingSectorName.trim() || !slug) {
+      setError('Informe o nome e um endereço válido para o setor.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      await updateDepartment(department.id, { name: editingSectorName.trim(), slug, active: editingSectorActive })
+      setEditingSectorId(null)
+      setNotice('Setor atualizado.')
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar o setor.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleSectorActive(department: Department) {
+    const action = department.active ? 'desativar' : 'ativar'
+    if (!window.confirm(`Deseja ${action} o setor "${department.name}"?`)) return
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      await updateDepartment(department.id, {
+        name: department.name,
+        slug: department.slug,
+        active: !department.active,
+      })
+      setNotice(`Setor ${department.active ? 'desativado' : 'ativado'}.`)
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível alterar o status do setor.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteSector(department: Department) {
+    if (!window.confirm(`Remover o setor "${department.name}"? Ele deixará de aparecer nas pesquisas.`)) return
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      await removeDepartment(department.id)
+      setEditingSectorId(null)
+      setNotice('Setor removido.')
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível remover o setor.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <Topbar eyebrow="PERSONALIZE SEU ESPAÇO" title="Configurações" description="Gerencie os setores da pesquisa e seus links de acesso." />
@@ -653,17 +725,39 @@ export function AdministrationPage() {
           <div className="settings-sector-list">{departments.map((department) => {
             const url = surveyUrl(department.slug)
             return (
-              <article key={department.id} className="settings-sector">
-                <span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span>
-                <span className="sector-info"><strong>{department.name}</strong><small>{url}</small></span>
-                <span className={`status-pill ${department.active ? 'status-complete' : 'status-partial'}`}>{department.active ? 'Ativo' : 'Inativo'}</span>
-                <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
-                <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
-                <div className="qr-popover" data-qr-slug={department.slug}>
-                  <QRCodeSVG value={url} size={64} level="M" />
-                  <button type="button" className="qr-download" onClick={() => downloadQr(department.slug)} title="Baixar QR Code"><Download size={12} /> Baixar</button>
-                </div>
-              </article>
+              editingSectorId === department.id
+                ? <article key={department.id} className="settings-sector sector-edit-row">
+                    <span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span>
+                    <div className="sector-edit-fields">
+                      <label className="form-field"><span>Nome do setor</span><input value={editingSectorName} maxLength={70} onChange={(event) => setEditingSectorName(event.target.value)} /></label>
+                      <label className="form-field"><span>Endereço</span><input value={editingSectorSlug} maxLength={100} onChange={(event) => setEditingSectorSlug(event.target.value)} /></label>
+                      <label className="sector-active-toggle"><input type="checkbox" checked={editingSectorActive} onChange={(event) => setEditingSectorActive(event.target.checked)} /><span>Setor ativo</span></label>
+                    </div>
+                    <button type="button" className="button button-primary" disabled={saving} onClick={() => void saveSectorEdit(department)}>Salvar</button>
+                    <button type="button" className="text-button" disabled={saving} onClick={() => setEditingSectorId(null)}>Cancelar</button>
+                  </article>
+                : <article key={department.id} className="settings-sector">
+                    <span className="sector-icon"><DepartmentIcon name={department.icon} size={19} /></span>
+                    <span className="sector-info"><strong>{department.name}</strong><small>{url}</small></span>
+                    <button
+                      type="button"
+                      className={`status-pill sector-status-toggle ${department.active ? 'status-complete' : 'status-partial'}`}
+                      onClick={() => void toggleSectorActive(department)}
+                      disabled={saving}
+                      title={department.active ? 'Desativar setor' : 'Ativar setor'}
+                      aria-label={`${department.active ? 'Desativar' : 'Ativar'} ${department.name}`}
+                    >
+                      {department.active ? 'Ativo' : 'Inativo'}
+                    </button>
+                    <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
+                    <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
+                    <button type="button" className="icon-button" onClick={() => startSectorEdit(department)} title="Editar setor" aria-label={`Editar ${department.name}`}><Pencil size={15} /></button>
+                    <button type="button" className="icon-button sector-remove-button" disabled={saving} onClick={() => void deleteSector(department)} title="Remover setor" aria-label={`Remover ${department.name}`}><Trash2 size={15} /></button>
+                    <div className="qr-popover" data-qr-slug={department.slug}>
+                      <QRCodeSVG value={url} size={64} level="M" />
+                      <button type="button" className="qr-download" onClick={() => downloadQr(department.slug)} title="Baixar QR Code"><Download size={12} /> Baixar</button>
+                    </div>
+                  </article>
             )
           })}</div>
           <form className="add-sector-form" onSubmit={addSector}><div className="form-section-title"><Plus size={17} /><strong>Adicionar setor</strong></div><div className="add-sector-fields"><label className="form-field"><span>Nome do setor</span><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={70} placeholder="Ex.: Laboratório" /></label><label className="form-field"><span>Descrição</span><input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={100} placeholder="Ex.: Coleta e realização de exames" /></label><button className="button button-primary" disabled={saving}>{saving ? 'Salvando…' : 'Adicionar'} <ArrowUpRight size={16} /></button></div></form>

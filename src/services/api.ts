@@ -578,6 +578,41 @@ export async function createDepartment(input: Pick<Department, 'name' | 'slug' |
   return department
 }
 
+export async function updateDepartment(
+  id: string,
+  input: Pick<Department, 'name' | 'slug' | 'active'>,
+): Promise<Department> {
+  if (API_BASE_URL) {
+    const department = await backendRequest<BackendDepartment>(`/api/admin/setores/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nome: input.name, slug: input.slug, ativo: input.active }),
+    })
+    return mapDepartment(department)
+  }
+  const departments = readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
+  if (departments.some((department) => department.id !== id && department.slug === input.slug)) {
+    throw new Error('Já existe um setor com este endereço.')
+  }
+  const index = departments.findIndex((department) => department.id === id)
+  if (index < 0) throw new Error('Setor não encontrado.')
+  const updated = { ...departments[index], name: input.name, slug: input.slug, active: input.active }
+  const next = departments.map((department) => department.id === id ? updated : department)
+  saveDemo(DEMO_DEPARTMENTS_KEY, next)
+  return updated
+}
+
+export async function removeDepartment(id: string): Promise<void> {
+  if (API_BASE_URL) {
+    await backendRequest<void>(`/api/admin/setores/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    return
+  }
+  const departments = readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
+  const index = departments.findIndex((department) => department.id === id)
+  if (index < 0) throw new Error('Setor não encontrado.')
+  departments[index] = { ...departments[index], active: false }
+  saveDemo(DEMO_DEPARTMENTS_KEY, departments)
+}
+
 export async function getAssignableProfiles(): Promise<AssignableProfile[]> {
   const profiles = await backendRequest<Array<{ id: number; nome: string; perfil: string }>>('/api/admin/perfis')
   return profiles.map((profile) => ({
