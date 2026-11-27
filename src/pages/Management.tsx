@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { getUserSectorSlugs } from '../services/access'
-import { createAdminAccount, createDepartment, createQuestion, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
+import { createAdminAccount, createDepartment, createQuestion, getAdminDepartments, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
 import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
@@ -617,7 +617,7 @@ export function AdministrationPage() {
 
   async function refresh() {
     try {
-      setDepartments(await getDepartments())
+      setDepartments(await getAdminDepartments())
       setError('')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os setores.')

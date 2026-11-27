@@ -180,6 +180,14 @@ export async function getDepartments(): Promise<Department[]> {
   return readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
 }
 
+export async function getAdminDepartments(): Promise<Department[]> {
+  if (API_BASE_URL) {
+    const departments = await backendRequest<BackendDepartment[]>('/api/admin/setores')
+    return departments.map(mapDepartment)
+  }
+  return readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
+}
+
 export async function getQuestions(sectorSlug: string): Promise<SurveyQuestion[]> {
   if (API_BASE_URL) {
     const response = await backendRequest<{ fluxo: BackendQuestion[] }>(`/api/setores/${encodeURIComponent(sectorSlug)}/fluxo`)
