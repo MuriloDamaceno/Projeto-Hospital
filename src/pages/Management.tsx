@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { getUserSectorSlugs } from '../services/access'
-import { createAdminAccount, createDepartment, createPermanentCareTeam, createQuestion, getAdminDepartments, getAssignableProfiles, getCareTeams, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
+import { archivePermanentCareTeam, createAdminAccount, createDepartment, createPermanentCareTeam, createQuestion, getAdminDepartments, getAssignableProfiles, getCareTeams, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
 import type { AssignableProfile, AuthUser, CareTeam, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
@@ -512,6 +512,7 @@ export function AdministrationPage() {
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const [savingCareTeam, setSavingCareTeam] = useState(false)
+  const [archivingCareTeamId, setArchivingCareTeamId] = useState<string | null>(null)
   const [editingSectorId, setEditingSectorId] = useState<string | null>(null)
   const [editingSectorName, setEditingSectorName] = useState('')
   const [editingSectorSlug, setEditingSectorSlug] = useState('')
@@ -629,10 +630,10 @@ export function AdministrationPage() {
         const isAvailable = (sectorId: string) => sectors.some((department) =>
           department.id === sectorId
           && department.active
-          && !teams.some((team) => team.permanent && team.sectorId === sectorId),
+          && !teams.some((team) => team.permanent && team.active && team.sectorId === sectorId),
         )
         return isAvailable(current) ? current : sectors.find((department) =>
-          department.active && !teams.some((team) => team.permanent && team.sectorId === department.id),
+          department.active && !teams.some((team) => team.permanent && team.active && team.sectorId === department.id),
         )?.id ?? ''
       })
       setError('')
@@ -684,6 +685,21 @@ export function AdministrationPage() {
       setError(cause instanceof Error ? cause.message : 'Não foi possível cadastrar a equipe.')
     } finally {
       setSavingCareTeam(false)
+    }
+  }
+
+  async function archiveCareTeam(team: CareTeam) {
+    setArchivingCareTeamId(team.id)
+    setError('')
+    setNotice('')
+    try {
+      await archivePermanentCareTeam(team.id)
+      await refresh()
+      setNotice(`Equipe ${team.name} arquivada. Pesquisas antigas mantêm o nome; pesquisas novas não serão vinculadas a ela.`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível arquivar a equipe.')
+    } finally {
+      setArchivingCareTeamId(null)
     }
   }
 
@@ -768,8 +784,10 @@ export function AdministrationPage() {
   const inactiveSectorCount = departments.filter((item) => !item.active).length
   const visibleDepartments = departments.filter((item) => showInactiveSectors || item.active)
   const permanentCareTeams = careTeams.filter((team) => team.permanent)
+  const activeCareTeams = permanentCareTeams.filter((team) => team.active)
+  const archivedCareTeams = permanentCareTeams.filter((team) => !team.active)
   const availableTeamSectors = departments.filter((department) =>
-    department.active && !permanentCareTeams.some((team) => team.sectorId === department.id),
+    department.active && !activeCareTeams.some((team) => team.sectorId === department.id),
   )
 
   return (
@@ -856,14 +874,16 @@ export function AdministrationPage() {
         </div>
         <p className="care-team-privacy-note">O nome da equipe só aparece nos relatórios após pelo menos 5 respostas. Pesquisas antigas sem vínculo não podem ser associadas automaticamente.</p>
         <div className="care-team-list">
-          {permanentCareTeams.map((team) => (
+          {activeCareTeams.map((team) => (
             <div className="care-team-row" key={team.id}>
               <strong>{team.name}</strong>
               <span>{departments.find((department) => department.id === team.sectorId)?.name ?? 'Setor indisponível'}</span>
+              <button type="button" className="icon-button sector-remove-button" disabled={archivingCareTeamId !== null} onClick={() => void archiveCareTeam(team)} title="Arquivar equipe mantendo o histórico" aria-label={`Arquivar equipe ${team.name}`}><Trash2 size={15} /></button>
             </div>
           ))}
-          {!permanentCareTeams.length && <p className="empty-note">Nenhuma equipe fixa cadastrada.</p>}
+          {!activeCareTeams.length && <p className="empty-note">Nenhuma equipe fixa ativa.</p>}
         </div>
+        {archivedCareTeams.length > 0 && <div className="care-team-archived-list"><h3>Equipes arquivadas · histórico preservado</h3>{archivedCareTeams.map((team) => <div className="care-team-row" key={team.id}><strong>{team.name}</strong><span>{departments.find((department) => department.id === team.sectorId)?.name ?? 'Setor indisponível'}</span><span className="care-team-archived-label">Arquivada</span></div>)}</div>}
         {availableTeamSectors.length > 0
           ? <form className="add-sector-form" onSubmit={(event) => void addCareTeam(event)}>
               <div className="form-section-title"><Plus size={17} /><strong>Cadastrar equipe fixa</strong></div>

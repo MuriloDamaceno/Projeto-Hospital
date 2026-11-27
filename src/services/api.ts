@@ -44,6 +44,7 @@ type BackendCareTeam = {
   setor_id: number
   nome: string
   permanente?: boolean
+  ativo?: boolean
 }
 type BackendQuestion = {
   id: number
@@ -203,9 +204,13 @@ export async function getCareTeams(): Promise<CareTeam[]> {
       sectorId: String(team.setor_id),
       name: team.nome,
       permanent: team.permanente === true,
+      active: team.ativo !== false,
     }))
   }
-  return readDemo<CareTeam[]>(DEMO_CARE_TEAMS_KEY, () => [])
+  return readDemo<CareTeam[]>(DEMO_CARE_TEAMS_KEY, () => []).map((team) => ({
+    ...team,
+    active: team.active !== false,
+  }))
 }
 
 export async function createPermanentCareTeam(input: { sectorId: number; name: string }): Promise<CareTeam> {
@@ -219,10 +224,11 @@ export async function createPermanentCareTeam(input: { sectorId: number; name: s
       sectorId: String(team.setor_id),
       name: team.nome,
       permanent: team.permanente === true,
+      active: team.ativo !== false,
     }
   }
   const teams = readDemo<CareTeam[]>(DEMO_CARE_TEAMS_KEY, () => [])
-  if (teams.some((team) => team.sectorId === String(input.sectorId) && team.permanent)) {
+  if (teams.some((team) => team.sectorId === String(input.sectorId) && team.permanent && team.active !== false)) {
     throw new Error('Já existe uma equipe fixa para este setor.')
   }
   const team: CareTeam = {
@@ -230,9 +236,22 @@ export async function createPermanentCareTeam(input: { sectorId: number; name: s
     sectorId: String(input.sectorId),
     name: input.name,
     permanent: true,
+    active: true,
   }
   saveDemo(DEMO_CARE_TEAMS_KEY, [...teams, team])
   return team
+}
+
+export async function archivePermanentCareTeam(id: string): Promise<void> {
+  if (API_BASE_URL) {
+    await backendRequest<void>(`/api/admin/equipes/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    return
+  }
+  const teams = readDemo<CareTeam[]>(DEMO_CARE_TEAMS_KEY, () => [])
+  const index = teams.findIndex((team) => team.id === id && team.permanent)
+  if (index < 0) throw new Error('Equipe fixa não encontrada.')
+  teams[index] = { ...teams[index], active: false }
+  saveDemo(DEMO_CARE_TEAMS_KEY, teams)
 }
 
 export async function getQuestions(sectorSlug: string): Promise<SurveyQuestion[]> {

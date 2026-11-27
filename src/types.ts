@@ -14,6 +14,7 @@ export interface CareTeam {
   sectorId: string
   name: string
   permanent: boolean
+  active: boolean
 }
 
 export interface SurveyAnswers {
