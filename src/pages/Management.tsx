@@ -678,8 +678,10 @@ export function AdministrationPage() {
   }
 
   async function toggleSectorActive(department: Department) {
-    const action = department.active ? 'desativar' : 'ativar'
-    if (!window.confirm(`Deseja ${action} o setor "${department.name}"?`)) return
+    const nextActive = !department.active
+    setDepartments((current) => current.map((item) =>
+      item.id === department.id ? { ...item, active: nextActive } : item,
+    ))
     setSaving(true)
     setError('')
     setNotice('')
@@ -687,11 +689,14 @@ export function AdministrationPage() {
       await updateDepartment(department.id, {
         name: department.name,
         slug: department.slug,
-        active: !department.active,
+        active: nextActive,
       })
       setNotice(`Setor ${department.active ? 'desativado' : 'ativado'}.`)
       await refresh()
     } catch (cause) {
+      setDepartments((current) => current.map((item) =>
+        item.id === department.id ? { ...item, active: department.active } : item,
+      ))
       setError(cause instanceof Error ? cause.message : 'Não foi possível alterar o status do setor.')
     } finally {
       setSaving(false)
