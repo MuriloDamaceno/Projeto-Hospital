@@ -512,6 +512,7 @@ export function AdministrationPage() {
   const [editingSectorName, setEditingSectorName] = useState('')
   const [editingSectorSlug, setEditingSectorSlug] = useState('')
   const [editingSectorActive, setEditingSectorActive] = useState(true)
+  const [showInactiveSectors, setShowInactiveSectors] = useState(false)
   const canCreateAccounts = getCurrentUser()?.role === 'Administrador'
   const selectedAccountProfile = assignableProfiles.find((item) => String(item.id) === accountProfileId)
   const accountRequiresSector = selectedAccountProfile ? ['admin_setor', 'gestao'].includes(selectedAccountProfile.permission) : false
@@ -704,21 +705,29 @@ export function AdministrationPage() {
   }
 
   async function deleteSector(department: Department) {
-    if (!window.confirm(`Remover o setor "${department.name}"? Ele deixará de aparecer nas pesquisas.`)) return
+    setDepartments((current) => current.map((item) =>
+      item.id === department.id ? { ...item, active: false } : item,
+    ))
     setSaving(true)
     setError('')
     setNotice('')
     try {
       await removeDepartment(department.id)
       setEditingSectorId(null)
-      setNotice('Setor removido.')
+      setNotice('Setor desativado e removido da lista. Você pode reativá-lo em “Mostrar inativos”.')
       await refresh()
     } catch (cause) {
+      setDepartments((current) => current.map((item) =>
+        item.id === department.id ? { ...item, active: department.active } : item,
+      ))
       setError(cause instanceof Error ? cause.message : 'Não foi possível remover o setor.')
     } finally {
       setSaving(false)
     }
   }
+
+  const inactiveSectorCount = departments.filter((item) => !item.active).length
+  const visibleDepartments = departments.filter((item) => showInactiveSectors || item.active)
 
   return (
     <>
@@ -726,8 +735,8 @@ export function AdministrationPage() {
       {error && <div className="alert alert-error" role="alert">{error}</div>}
       {notice && <div className="alert alert-success" role="status">{notice}</div>}
       <div className="settings-layout">
-        <section className="panel settings-panel"><div className="panel-heading"><div><h2>Setores da pesquisa</h2><p>Cada setor possui uma página e um link próprios.</p></div><span className="settings-count">{departments.filter((item) => item.active).length} ativos</span></div>
-          <div className="settings-sector-list">{departments.map((department) => {
+        <section className="panel settings-panel"><div className="panel-heading"><div><h2>Setores da pesquisa</h2><p>Cada setor possui uma página e um link próprios.</p></div><div className="sector-list-controls"><span className="settings-count">{departments.filter((item) => item.active).length} ativos</span>{inactiveSectorCount > 0 && <button type="button" className="link-small sector-inactive-toggle" onClick={() => setShowInactiveSectors((current) => !current)}>{showInactiveSectors ? 'Ocultar inativos' : `Mostrar inativos (${inactiveSectorCount})`}</button>}</div></div>
+          <div className="settings-sector-list">{visibleDepartments.map((department) => {
             const url = surveyUrl(department.slug)
             return (
               editingSectorId === department.id
@@ -754,17 +763,17 @@ export function AdministrationPage() {
                     >
                       {department.active ? 'Ativo' : 'Inativo'}
                     </button>
-                    <button type="button" className="icon-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
-                    <a href={url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
+                    <button type="button" className="icon-button sector-link-button" onClick={() => void copyQrLink(department.slug)} title="Copiar link do QR Code"><Copy size={16} /></button>
+                    <a href={url} target="_blank" rel="noreferrer" className="icon-button sector-link-button" title="Abrir pesquisa"><ExternalLink size={16} /></a>
                     <button type="button" className="icon-button" onClick={() => startSectorEdit(department)} title="Editar setor" aria-label={`Editar ${department.name}`}><Pencil size={15} /></button>
-                    <button type="button" className="icon-button sector-remove-button" disabled={saving} onClick={() => void deleteSector(department)} title="Remover setor" aria-label={`Remover ${department.name}`}><Trash2 size={15} /></button>
+                    <button type="button" className="icon-button sector-remove-button" disabled={saving} onClick={() => void deleteSector(department)} title="Desativar e ocultar setor" aria-label={`Desativar e ocultar ${department.name}`}><Trash2 size={15} /></button>
                     <div className="qr-popover" data-qr-slug={department.slug}>
                       <QRCodeSVG value={url} size={64} level="M" />
                       <button type="button" className="qr-download" onClick={() => downloadQr(department.slug)} title="Baixar QR Code"><Download size={12} /> Baixar</button>
                     </div>
                   </article>
             )
-          })}</div>
+          })}{visibleDepartments.length === 0 && <p className="empty-note">Não há setores ativos. Use “Mostrar inativos” para reativar algum setor.</p>}</div>
           <form className="add-sector-form" onSubmit={addSector}><div className="form-section-title"><Plus size={17} /><strong>Adicionar setor</strong></div><div className="add-sector-fields"><label className="form-field"><span>Nome do setor</span><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={70} placeholder="Ex.: Laboratório" /></label><label className="form-field"><span>Descrição</span><input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={100} placeholder="Ex.: Coleta e realização de exames" /></label><button className="button button-primary" disabled={saving}>{saving ? 'Salvando…' : 'Adicionar'} <ArrowUpRight size={16} /></button></div></form>
         </section>
         <aside className="settings-side">
