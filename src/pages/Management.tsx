@@ -5,8 +5,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Brand } from '../components/Brand'
 import { DepartmentIcon } from '../components/DepartmentIcon'
 import { getUserSectorSlugs } from '../services/access'
-import { createAdminAccount, createDepartment, createQuestion, getAdminDepartments, getAssignableProfiles, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
-import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
+import { createAdminAccount, createDepartment, createPermanentCareTeam, createQuestion, getAdminDepartments, getAssignableProfiles, getCareTeams, getCurrentUser, getDashboardData, getDepartments, getManagedQuestions, getTVWallData, isDemoMode, login, removeDepartment, updateDepartment, updateManifestationStatus, updateQuestion } from '../services/api'
+import type { AssignableProfile, AuthUser, CareTeam, DashboardPayload, Department, Manifestation, ManifestationStatus, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 function percentage(value: number, total: number) {
   return total ? Math.round((value / total) * 100) : 0
@@ -21,7 +21,7 @@ function getTeamKey(survey: SurveyRecord): string | null {
 function getTeamDisplayName(survey: SurveyRecord, counts: Map<string, number>): string {
   const teamName = survey.teamName
   const key = getTeamKey(survey)
-  if (!teamName || !key) return 'Equipe não exibida'
+  if (!teamName || !key) return survey.teamAssigned ? 'Equipe oculta (mín. 5 respostas)' : 'Sem equipe vinculada'
   return (counts.get(key) ?? 0) >= MINIMUM_TEAM_RESPONSES
     ? teamName
     : 'Equipe oculta (mín. 5 respostas)'
@@ -493,6 +493,7 @@ export function QuestionsManagementPage() {
 
 export function AdministrationPage() {
   const [departments, setDepartments] = useState<Department[]>([])
+  const [careTeams, setCareTeams] = useState<CareTeam[]>([])
   const [assignableProfiles, setAssignableProfiles] = useState<AssignableProfile[]>([])
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
@@ -505,9 +506,12 @@ export function AdministrationPage() {
   const [showAccountForm, setShowAccountForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [careTeamName, setCareTeamName] = useState('')
+  const [careTeamSectorId, setCareTeamSectorId] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingCareTeam, setSavingCareTeam] = useState(false)
   const [editingSectorId, setEditingSectorId] = useState<string | null>(null)
   const [editingSectorName, setEditingSectorName] = useState('')
   const [editingSectorSlug, setEditingSectorSlug] = useState('')
@@ -618,7 +622,19 @@ export function AdministrationPage() {
 
   async function refresh() {
     try {
-      setDepartments(await getAdminDepartments())
+      const [sectors, teams] = await Promise.all([getAdminDepartments(), getCareTeams()])
+      setDepartments(sectors)
+      setCareTeams(teams)
+      setCareTeamSectorId((current) => {
+        const isAvailable = (sectorId: string) => sectors.some((department) =>
+          department.id === sectorId
+          && department.active
+          && !teams.some((team) => team.permanent && team.sectorId === sectorId),
+        )
+        return isAvailable(current) ? current : sectors.find((department) =>
+          department.active && !teams.some((team) => team.permanent && team.sectorId === department.id),
+        )?.id ?? ''
+      })
       setError('')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os setores.')
@@ -645,6 +661,29 @@ export function AdministrationPage() {
       setError(cause instanceof Error ? cause.message : 'Não foi possível cadastrar o setor.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function addCareTeam(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const sector = departments.find((department) => department.id === careTeamSectorId && department.active)
+    if (!sector) {
+      setError('Selecione um setor ativo para a equipe.')
+      return
+    }
+
+    setSavingCareTeam(true)
+    setError('')
+    setNotice('')
+    try {
+      await createPermanentCareTeam({ sectorId: Number(sector.id), name: careTeamName.trim() })
+      setCareTeamName('')
+      setNotice(`Equipe fixa cadastrada para ${sector.name}. Pesquisas novas serão vinculadas automaticamente.`)
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível cadastrar a equipe.')
+    } finally {
+      setSavingCareTeam(false)
     }
   }
 
@@ -728,6 +767,10 @@ export function AdministrationPage() {
 
   const inactiveSectorCount = departments.filter((item) => !item.active).length
   const visibleDepartments = departments.filter((item) => showInactiveSectors || item.active)
+  const permanentCareTeams = careTeams.filter((team) => team.permanent)
+  const availableTeamSectors = departments.filter((department) =>
+    department.active && !permanentCareTeams.some((team) => team.sectorId === department.id),
+  )
 
   return (
     <>
@@ -806,6 +849,32 @@ export function AdministrationPage() {
           <article className="settings-callout"><span className="callout-lock"><ShieldCheck size={19} /></span><strong>Privacidade em primeiro lugar</strong><p>O acesso a manifestações e dados pessoais depende do perfil e deve ser validado na API.</p><Link to="/privacidade">Ver política de privacidade <ArrowUpRight size={14} /></Link></article>
         </aside>
       </div>
+      <section className="panel settings-panel care-team-panel">
+        <div className="panel-heading">
+          <div><h2>Equipes fixas por setor</h2><p>Pesquisas novas serão vinculadas à equipe do setor automaticamente.</p></div>
+          <UsersRound size={18} />
+        </div>
+        <p className="care-team-privacy-note">O nome da equipe só aparece nos relatórios após pelo menos 5 respostas. Pesquisas antigas sem vínculo não podem ser associadas automaticamente.</p>
+        <div className="care-team-list">
+          {permanentCareTeams.map((team) => (
+            <div className="care-team-row" key={team.id}>
+              <strong>{team.name}</strong>
+              <span>{departments.find((department) => department.id === team.sectorId)?.name ?? 'Setor indisponível'}</span>
+            </div>
+          ))}
+          {!permanentCareTeams.length && <p className="empty-note">Nenhuma equipe fixa cadastrada.</p>}
+        </div>
+        {availableTeamSectors.length > 0
+          ? <form className="add-sector-form" onSubmit={(event) => void addCareTeam(event)}>
+              <div className="form-section-title"><Plus size={17} /><strong>Cadastrar equipe fixa</strong></div>
+              <div className="add-sector-fields">
+                <label className="form-field"><span>Nome da equipe</span><input value={careTeamName} onChange={(event) => setCareTeamName(event.target.value)} required minLength={2} maxLength={150} placeholder="Ex.: Equipe de Enfermagem" /></label>
+                <label className="form-field"><span>Setor</span><select value={careTeamSectorId} onChange={(event) => setCareTeamSectorId(event.target.value)} required><option value="" disabled>Selecione um setor</option>{availableTeamSectors.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
+                <button className="button button-primary" type="submit" disabled={savingCareTeam || !careTeamName.trim()}>{savingCareTeam ? 'Salvando…' : 'Cadastrar'} <ArrowUpRight size={16} /></button>
+              </div>
+            </form>
+          : <p className="empty-note">Todos os setores ativos já têm uma equipe fixa cadastrada.</p>}
+      </section>
       <section className="panel question-config-note"><div className="settings-note-icon"><ClipboardList size={18} /></div><div><h2>Perguntas por setor</h2><p>Use a área “Perguntas” para adicionar, editar ou desativar perguntas. A Gestão acessa somente o setor associado à conta; o Administrador pode editar perguntas gerais e de qualquer setor.</p></div><Link className="button button-outline" to="/gestao/perguntas">Abrir perguntas <ArrowUpRight size={15} /></Link></section>
     </>
   )

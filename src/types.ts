@@ -9,6 +9,13 @@ export interface Department {
   active: boolean
 }
 
+export interface CareTeam {
+  id: string
+  sectorId: string
+  name: string
+  permanent: boolean
+}
+
 export interface SurveyAnswers {
   overallRating?: number
   departmentRating?: number
@@ -37,6 +44,7 @@ export interface SurveyRecord {
   createdAt: string
   shift: 'Manhã' | 'Tarde' | 'Noite'
   teamName?: string
+  teamAssigned?: boolean
   answers: SurveyAnswers
   mean: number | null
   complete: boolean

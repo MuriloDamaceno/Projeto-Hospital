@@ -23,6 +23,7 @@ const manualSections = [
       'Entre em “Acesso da equipe” com as credenciais fornecidas pela administração. No ambiente de demonstração, use o botão de demonstração.',
       'No painel “Visão geral”, selecione o período e o setor para analisar respostas, satisfação, NPS e pesquisas parciais.',
       'Use “Exportar Excel” para baixar um CSV compatível com Excel. Para PDF, use a opção Imprimir do navegador e escolha “Salvar como PDF”.',
+      'Em “Configurações”, cadastre uma equipe fixa para cada setor. Pesquisas novas serão associadas automaticamente; o nome da equipe aparece após cinco respostas. Pesquisas antigas sem vínculo não são associadas retroativamente.',
     ],
   },
   {

@@ -1,11 +1,12 @@
 import { createDemoManifestations, createDemoSurveys, departments as demoDepartments, demoQuestions, getShift } from '../data/demo'
 import { getUserSectorSlugs } from './access'
-import type { AssignableProfile, AuthUser, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
+import type { AssignableProfile, AuthUser, CareTeam, DashboardPayload, Department, Manifestation, ManifestationStatus, ManifestationType, SurveyAnswers, SurveyQuestion, SurveyQuestionType, SurveyRecord, TVWallPayload } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
 const DEMO_SURVEYS_KEY = 'sgep:surveys'
 const DEMO_MANIFESTATIONS_KEY = 'sgep:manifestations'
 const DEMO_DEPARTMENTS_KEY = 'sgep:departments'
+const DEMO_CARE_TEAMS_KEY = 'sgep:care-teams'
 const DEMO_QUESTIONS_KEY = 'sgep:questions'
 const DEMO_TOKEN_KEY = 'sgep:token'
 
@@ -38,6 +39,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 type BackendDepartment = { id: number; nome: string; slug: string; ativo: boolean }
+type BackendCareTeam = {
+  id: number
+  setor_id: number
+  nome: string
+  permanente?: boolean
+}
 type BackendQuestion = {
   id: number
   texto: string
@@ -186,6 +193,46 @@ export async function getAdminDepartments(): Promise<Department[]> {
     return departments.map(mapDepartment)
   }
   return readDemo(DEMO_DEPARTMENTS_KEY, () => demoDepartments)
+}
+
+export async function getCareTeams(): Promise<CareTeam[]> {
+  if (API_BASE_URL) {
+    const teams = await backendRequest<BackendCareTeam[]>('/api/admin/equipes')
+    return teams.map((team) => ({
+      id: String(team.id),
+      sectorId: String(team.setor_id),
+      name: team.nome,
+      permanent: team.permanente === true,
+    }))
+  }
+  return readDemo<CareTeam[]>(DEMO_CARE_TEAMS_KEY, () => [])
+}
+
+export async function createPermanentCareTeam(input: { sectorId: number; name: string }): Promise<CareTeam> {
+  if (API_BASE_URL) {
+    const team = await backendRequest<BackendCareTeam>('/api/admin/equipes', {
+      method: 'POST',
+      body: JSON.stringify({ setor_id: input.sectorId, nome: input.name, permanente: true }),
+    })
+    return {
+      id: String(team.id),
+      sectorId: String(team.setor_id),
+      name: team.nome,
+      permanent: team.permanente === true,
+    }
+  }
+  const teams = readDemo<CareTeam[]>(DEMO_CARE_TEAMS_KEY, () => [])
+  if (teams.some((team) => team.sectorId === String(input.sectorId) && team.permanent)) {
+    throw new Error('Já existe uma equipe fixa para este setor.')
+  }
+  const team: CareTeam = {
+    id: `equipe-${crypto.randomUUID()}`,
+    sectorId: String(input.sectorId),
+    name: input.name,
+    permanent: true,
+  }
+  saveDemo(DEMO_CARE_TEAMS_KEY, [...teams, team])
+  return team
 }
 
 export async function getQuestions(sectorSlug: string): Promise<SurveyQuestion[]> {
@@ -434,6 +481,7 @@ export async function getDashboardData(): Promise<DashboardPayload> {
           data_hora: string
           turno: string
           equipe?: string | null
+          equipe_vinculada?: boolean
           media_parcial: number | null
           nps_nota: number | null
           status: string
@@ -462,6 +510,7 @@ export async function getDashboardData(): Promise<DashboardPayload> {
           createdAt: survey.data_hora,
           shift: survey.turno === 'manha' ? 'Manhã' : survey.turno === 'tarde' ? 'Tarde' : 'Noite',
           ...(survey.equipe ? { teamName: survey.equipe } : {}),
+          teamAssigned: survey.equipe_vinculada === true,
           answers: {
             ...(mean === null ? {} : { overallRating: Math.round(mean) }),
             ...(nps === undefined ? {} : { nps }),
